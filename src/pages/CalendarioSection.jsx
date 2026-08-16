@@ -4,27 +4,21 @@ import {
   Calendar as CalendarIcon, 
   ChevronLeft, 
   ChevronRight, 
-  Plus, 
-  Trash2, 
-  Info,
+  Award,
   Clock,
-  Tag,
-  Link2
+  Wallet,
+  X,
+  Filter,
+  CheckCircle2
 } from 'lucide-react';
+import { useWorkspace as useWorkspaceModal } from '../context/WorkspaceContext';
 
 export const CalendarioSection = () => {
-  const { calendarEvents, addCalendarEvent, deleteCalendarEvent } = useWorkspace();
+  const { grades, schoolItems, transactions, isSidebarOpen } = useWorkspace();
 
-  const [currentDate, setCurrentDate] = useState(new Date(2026, 7, 1)); // August 2026
-  const [selectedCategory, setSelectedCategory] = useState('tutti');
-  const [showEventForm, setShowEventForm] = useState(false);
-
-  // Form State
-  const [title, setTitle] = useState('');
-  const [eventDate, setEventDate] = useState('2026-08-20');
-  const [time, setTime] = useState('10:00');
-  const [category, setCategory] = useState('scuola');
-  const [notes, setNotes] = useState('');
+  const [currentDate, setCurrentDate] = useState(new Date()); // Current Month
+  const [selectedCategory, setSelectedCategory] = useState('tutti'); // tutti, voti, scadenze, economia
+  const [selectedEvent, setSelectedEvent] = useState(null);
 
   // Calendar calculations
   const year = currentDate.getFullYear();
@@ -49,165 +43,112 @@ export const CalendarioSection = () => {
     setCurrentDate(new Date(year, month + 1, 1));
   };
 
-  const handleSubmit = (e) => {
-    e.preventDefault();
-    if (!title || !eventDate) return;
+  // Helper to compile all events for a specific ISO date (YYYY-MM-DD)
+  const getEventsForDate = (isoDate) => {
+    const events = [];
 
-    addCalendarEvent({
-      title,
-      date: eventDate,
-      time,
-      category,
-      notes
-    });
+    // 1. Voti di Scuola
+    if (selectedCategory === 'tutti' || selectedCategory === 'voti') {
+      grades
+        .filter(g => g.date === isoDate)
+        .forEach(g => {
+          events.push({
+            id: 'g_' + g.id,
+            type: 'voto',
+            categoryName: 'Voto Scuola',
+            title: `Voto ${g.grade} - ${g.subject}`,
+            subTitle: g.title,
+            date: g.date,
+            badgeBg: 'bg-purple-100 text-purple-900 dark:bg-purple-950/90 dark:text-purple-200 border border-purple-200 dark:border-purple-800',
+            raw: g
+          });
+        });
+    }
 
-    setTitle('');
-    setNotes('');
-    setShowEventForm(false);
+    // 2. Scadenze di Scuola
+    if (selectedCategory === 'tutti' || selectedCategory === 'scadenze') {
+      schoolItems
+        .filter(s => s.date === isoDate)
+        .forEach(s => {
+          events.push({
+            id: 's_' + s.id,
+            type: 'scadenza',
+            categoryName: 'Scadenza Scuola',
+            title: `${s.subject}: ${s.title}`,
+            subTitle: s.status === 'fatto' ? 'Completata' : 'In Sospeso',
+            date: s.date,
+            badgeBg: 'bg-blue-100 text-blue-900 dark:bg-blue-950/90 dark:text-blue-200 border border-blue-200 dark:border-blue-800',
+            raw: s
+          });
+        });
+    }
+
+    // 3. Transazioni di Economia
+    if (selectedCategory === 'tutti' || selectedCategory === 'economia') {
+      transactions
+        .filter(t => t.description !== 'Saldo Iniziale' && t.date === isoDate)
+        .forEach(t => {
+          events.push({
+            id: 't_' + t.id,
+            type: 'transazione',
+            categoryName: 'Economia',
+            title: `${t.type === 'entrata' ? '+' : '−'}€${Number(t.amount).toFixed(2)} (${t.description})`,
+            subTitle: t.category,
+            date: t.date,
+            badgeBg: t.type === 'entrata'
+              ? 'bg-emerald-100 text-emerald-900 dark:bg-emerald-950/90 dark:text-emerald-200 border border-emerald-200 dark:border-emerald-800'
+              : 'bg-red-100 text-red-900 dark:bg-red-950/90 dark:text-red-200 border border-red-200 dark:border-red-800',
+            raw: t
+          });
+        });
+    }
+
+    return events;
   };
 
-  const filteredEvents = calendarEvents.filter(e => {
-    return selectedCategory === 'tutti' || e.category === selectedCategory;
-  });
-
   return (
-    <div className="max-w-5xl mx-auto p-4 sm:p-6 lg:p-8 space-y-6 animate-fade-in">
+    <div className="w-full px-4 md:px-8 pt-5 pb-16 mb-12 space-y-4 animate-fade-in">
       {/* Title & Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-neutral-200/80 dark:border-neutral-800/80">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-neutral-200/80 dark:border-neutral-800/80">
         <div>
-          <h1 className="text-2xl font-bold text-neutral-900 dark:text-white flex items-center gap-2">
-            <CalendarIcon className="w-6 h-6 text-purple-500" />
-            <span>Calendario Eventi & Scadenze</span>
+          <h1 className="text-xl font-bold text-neutral-900 dark:text-white flex items-center gap-2">
+            <CalendarIcon className="w-5 h-5 text-purple-500" />
+            <span>Calendario Integrato</span>
           </h1>
-          <p className="text-xs text-neutral-500 dark:text-neutral-400 mt-1">
-            Visualizzazione mensile interattiva per scuola, finanze e vita personale.
+          <p className="text-[11px] text-neutral-500 dark:text-neutral-400 mt-0.5">
+            Vista d'insieme in sola lettura di tutti i tuoi voti, scadenze scolastiche e movimenti finanziari.
           </p>
         </div>
 
-        <button
-          onClick={() => setShowEventForm(!showEventForm)}
-          className="px-3.5 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg text-xs font-medium flex items-center gap-2 shadow-xs transition-colors"
-        >
-          <Plus className="w-4 h-4" />
-          <span>Aggiungi Evento</span>
-        </button>
-      </div>
-
-      {/* Info Callout about Calendar APIs */}
-      <div className="p-3.5 rounded-lg border border-purple-200/70 bg-purple-50/50 dark:border-purple-900/40 dark:bg-purple-950/20 text-xs text-purple-900 dark:text-purple-300 flex items-start gap-2.5">
-        <Info className="w-4 h-4 text-purple-500 shrink-0 mt-0.5" />
-        <div>
-          <span className="font-semibold">Nota sulle API Calendario:</span> Al momento il calendario funziona al 100% in locale e salva tutti gli eventi direttamente nel browser. Se in futuro vorrai sincronizzarlo automaticamente con **Google Calendar** o **iCal/Outlook**, basta collegare l'API key (Google Cloud Console Client ID OAuth).
+        {/* Category Filter Pills */}
+        <div className="flex items-center gap-1.5 overflow-x-auto py-1 scrollbar-none shrink-0">
+          <span className="text-xs font-semibold text-neutral-400 mr-1 flex items-center gap-1 shrink-0">
+            <Filter className="w-3 h-3" />
+            Filtra:
+          </span>
+          {[
+            { id: 'tutti', label: 'Tutti' },
+            { id: 'voti', label: 'Voti (Viola)' },
+            { id: 'scadenze', label: 'Scadenze (Blu)' },
+            { id: 'economia', label: 'Economia (Verde/Rosso)' }
+          ].map(cat => (
+            <button
+              key={cat.id}
+              onClick={() => setSelectedCategory(cat.id)}
+              className={`px-3 py-1 rounded-md text-xs font-semibold shrink-0 transition-all ${
+                selectedCategory === cat.id
+                  ? 'bg-purple-100 text-purple-800 dark:bg-purple-950 dark:text-purple-300 border border-purple-300 dark:border-purple-800'
+                  : 'bg-neutral-100 dark:bg-neutral-800 text-neutral-600 dark:text-neutral-400 hover:bg-neutral-200'
+              }`}
+            >
+              {cat.label}
+            </button>
+          ))}
         </div>
       </div>
 
-      {/* Category Filter Pills */}
-      <div className="flex items-center gap-2 text-xs overflow-x-auto pb-1">
-        <span className="text-neutral-400 font-medium mr-1">Filtra:</span>
-        {['tutti', 'scuola', 'economia', 'personale'].map(cat => (
-          <button
-            key={cat}
-            onClick={() => setSelectedCategory(cat)}
-            className={`px-3 py-1 rounded-full capitalize font-medium transition-colors ${
-              selectedCategory === cat
-                ? 'bg-purple-600 text-white'
-                : 'bg-neutral-100 dark:bg-neutral-800 text-neutral-600 dark:text-neutral-400 hover:bg-neutral-200 dark:hover:bg-neutral-700'
-            }`}
-          >
-            {cat}
-          </button>
-        ))}
-      </div>
-
-      {/* Add Event Modal/Form */}
-      {showEventForm && (
-        <form 
-          onSubmit={handleSubmit}
-          className="p-4 rounded-xl border border-purple-200 dark:border-purple-900/50 bg-purple-50/40 dark:bg-purple-950/20 space-y-4 animate-fade-in"
-        >
-          <div className="text-xs font-bold text-purple-900 dark:text-purple-300 uppercase tracking-wider">
-            Crea un nuovo evento in calendario
-          </div>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3">
-            <div className="sm:col-span-2">
-              <label className="block text-[11px] text-neutral-600 dark:text-neutral-400 mb-1">Titolo Evento</label>
-              <input
-                type="text"
-                required
-                placeholder="es. Riunione, Consegna Progetto, Pagamento"
-                value={title}
-                onChange={(e) => setTitle(e.target.value)}
-                className="w-full text-xs p-2 rounded-md border border-neutral-300 dark:border-neutral-700 bg-white dark:bg-[#191919] focus:outline-none focus:ring-1 focus:ring-purple-500"
-              />
-            </div>
-
-            <div>
-              <label className="block text-[11px] text-neutral-600 dark:text-neutral-400 mb-1">Data</label>
-              <input
-                type="date"
-                required
-                value={eventDate}
-                onChange={(e) => setEventDate(e.target.value)}
-                className="w-full text-xs p-2 rounded-md border border-neutral-300 dark:border-neutral-700 bg-white dark:bg-[#191919] focus:outline-none focus:ring-1 focus:ring-purple-500"
-              />
-            </div>
-
-            <div>
-              <label className="block text-[11px] text-neutral-600 dark:text-neutral-400 mb-1">Ora (Opzionale)</label>
-              <input
-                type="time"
-                value={time}
-                onChange={(e) => setTime(e.target.value)}
-                className="w-full text-xs p-2 rounded-md border border-neutral-300 dark:border-neutral-700 bg-white dark:bg-[#191919] focus:outline-none focus:ring-1 focus:ring-purple-500"
-              />
-            </div>
-
-            <div>
-              <label className="block text-[11px] text-neutral-600 dark:text-neutral-400 mb-1">Categoria</label>
-              <select
-                value={category}
-                onChange={(e) => setCategory(e.target.value)}
-                className="w-full text-xs p-2 rounded-md border border-neutral-300 dark:border-neutral-700 bg-white dark:bg-[#191919] focus:outline-none focus:ring-1 focus:ring-purple-500"
-              >
-                <option value="scuola">Scuola</option>
-                <option value="economia">Economia</option>
-                <option value="personale">Personale</option>
-              </select>
-            </div>
-
-            <div className="sm:col-span-3">
-              <label className="block text-[11px] text-neutral-600 dark:text-neutral-400 mb-1">Note / Dettagli</label>
-              <input
-                type="text"
-                placeholder="Aggiungi una breve nota..."
-                value={notes}
-                onChange={(e) => setNotes(e.target.value)}
-                className="w-full text-xs p-2 rounded-md border border-neutral-300 dark:border-neutral-700 bg-white dark:bg-[#191919] focus:outline-none focus:ring-1 focus:ring-purple-500"
-              />
-            </div>
-          </div>
-
-          <div className="flex justify-end gap-2 pt-2">
-            <button
-              type="button"
-              onClick={() => setShowEventForm(false)}
-              className="px-3 py-1.5 text-xs text-neutral-600 dark:text-neutral-400 hover:bg-neutral-200/60 dark:hover:bg-neutral-800 rounded-md"
-            >
-              Annulla
-            </button>
-            <button
-              type="submit"
-              className="px-4 py-1.5 text-xs bg-purple-600 text-white font-medium rounded-md hover:bg-purple-700"
-            >
-              Salva Evento
-            </button>
-          </div>
-        </form>
-      )}
-
       {/* Main Calendar View Container */}
-      <div className="notion-card p-4 space-y-4">
+      <div className="notion-card p-4 space-y-4 bg-white dark:bg-[#202020] border border-neutral-200 dark:border-neutral-800 rounded-xl shadow-xs">
         {/* Month Controls Header */}
         <div className="flex items-center justify-between pb-2 border-b border-neutral-200 dark:border-neutral-800">
           <h2 className="text-base font-bold text-neutral-900 dark:text-white">
@@ -217,19 +158,19 @@ export const CalendarioSection = () => {
           <div className="flex items-center gap-1">
             <button
               onClick={handlePrevMonth}
-              className="p-1 rounded hover:bg-neutral-100 dark:hover:bg-neutral-800 text-neutral-600 dark:text-neutral-400"
+              className="p-1 rounded hover:bg-neutral-100 dark:hover:bg-neutral-800 text-neutral-600 dark:text-neutral-400 transition-colors"
             >
               <ChevronLeft className="w-4 h-4" />
             </button>
             <button
               onClick={() => setCurrentDate(new Date())}
-              className="px-2 py-1 text-xs rounded hover:bg-neutral-100 dark:hover:bg-neutral-800 text-neutral-600 dark:text-neutral-400"
+              className="px-2.5 py-1 text-xs font-semibold rounded hover:bg-neutral-100 dark:hover:bg-neutral-800 text-neutral-600 dark:text-neutral-400 transition-colors"
             >
               Oggi
             </button>
             <button
               onClick={handleNextMonth}
-              className="p-1 rounded hover:bg-neutral-100 dark:hover:bg-neutral-800 text-neutral-600 dark:text-neutral-400"
+              className="p-1 rounded hover:bg-neutral-100 dark:hover:bg-neutral-800 text-neutral-600 dark:text-neutral-400 transition-colors"
             >
               <ChevronRight className="w-4 h-4" />
             </button>
@@ -237,7 +178,7 @@ export const CalendarioSection = () => {
         </div>
 
         {/* Days of Week Header */}
-        <div className="grid grid-cols-7 gap-1 text-center text-xs font-semibold text-neutral-400">
+        <div className="grid grid-cols-7 gap-1 text-center text-xs font-bold text-neutral-400 uppercase tracking-wider py-1">
           <div>Lun</div><div>Mar</div><div>Mer</div><div>Gio</div><div>Ven</div><div>Sab</div><div>Dom</div>
         </div>
 
@@ -245,59 +186,47 @@ export const CalendarioSection = () => {
         <div className="grid grid-cols-7 gap-1.5">
           {/* Blank offset days */}
           {Array.from({ length: startOffset }).map((_, index) => (
-            <div key={`blank-${index}`} className="min-h-20 p-1.5 bg-neutral-50/50 dark:bg-neutral-900/30 rounded border border-neutral-100 dark:border-neutral-800/40 opacity-40" />
+            <div key={`blank-${index}`} className="min-h-24 p-1.5 bg-neutral-50/40 dark:bg-neutral-900/30 rounded-xl border border-neutral-100 dark:border-neutral-800/40 opacity-30" />
           ))}
 
           {/* Days of current month */}
           {Array.from({ length: daysInMonth }).map((_, index) => {
             const dayNum = index + 1;
             const formattedDate = `${year}-${String(month + 1).padStart(2, '0')}-${String(dayNum).padStart(2, '0')}`;
-            const dayEvents = filteredEvents.filter(e => e.date === formattedDate);
+            const dayEvents = getEventsForDate(formattedDate);
+
+            const isToday = new Date().toISOString().split('T')[0] === formattedDate;
 
             return (
               <div 
                 key={dayNum} 
-                className="min-h-24 p-1.5 bg-white dark:bg-neutral-800/40 rounded border border-neutral-200/60 dark:border-neutral-800 flex flex-col justify-between hover:border-purple-300 dark:hover:border-purple-800 transition-colors group"
+                className={`min-h-24 p-1.5 rounded-xl border flex flex-col justify-between transition-all ${
+                  isToday 
+                    ? 'bg-purple-50/50 dark:bg-purple-950/20 border-purple-400 dark:border-purple-700' 
+                    : 'bg-white dark:bg-[#191919] border-neutral-200/80 dark:border-neutral-800'
+                }`}
               >
                 <div className="flex items-center justify-between">
-                  <span className="text-xs font-semibold text-neutral-700 dark:text-neutral-300">
+                  <span className={`text-xs font-extrabold ${isToday ? 'text-purple-600 dark:text-purple-400' : 'text-neutral-700 dark:text-neutral-300'}`}>
                     {dayNum}
                   </span>
-                  <button
-                    onClick={() => {
-                      setEventDate(formattedDate);
-                      setShowEventForm(true);
-                    }}
-                    className="opacity-0 group-hover:opacity-100 text-[10px] text-purple-600 hover:underline"
-                  >
-                    +
-                  </button>
+                  {dayEvents.length > 0 && (
+                    <span className="text-[10px] font-bold px-1.5 py-0.2 rounded-full bg-neutral-100 dark:bg-neutral-800 text-neutral-500">
+                      {dayEvents.length}
+                    </span>
+                  )}
                 </div>
 
                 {/* Day events pills */}
-                <div className="space-y-1 mt-1 overflow-y-auto max-h-16">
+                <div className="space-y-1 mt-1 overflow-y-auto max-h-20 scrollbar-none">
                   {dayEvents.map(ev => (
                     <div 
                       key={ev.id}
-                      className={`px-1.5 py-0.5 rounded text-[10px] truncate font-medium flex items-center justify-between ${
-                        ev.category === 'scuola' 
-                          ? 'bg-blue-100 text-blue-800 dark:bg-blue-950/80 dark:text-blue-300' 
-                          : ev.category === 'economia'
-                          ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950/80 dark:text-emerald-300'
-                          : 'bg-purple-100 text-purple-800 dark:bg-purple-950/80 dark:text-purple-300'
-                      }`}
-                      title={`${ev.title} (${ev.time || 'Tutto il giorno'}) - ${ev.notes}`}
+                      onClick={() => setSelectedEvent(ev)}
+                      className={`px-1.5 py-1 rounded-md text-[10px] font-bold cursor-pointer transition-transform hover:scale-[1.02] ${ev.badgeBg}`}
+                      title={`${ev.title} - Clicca per i dettagli`}
                     >
-                      <span className="truncate">{ev.title}</span>
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          deleteCalendarEvent(ev.id);
-                        }}
-                        className="opacity-0 group-hover:opacity-100 hover:text-red-500 shrink-0 ml-1"
-                      >
-                        ×
-                      </button>
+                      <div className="truncate">{ev.title}</div>
                     </div>
                   ))}
                 </div>
@@ -306,6 +235,108 @@ export const CalendarioSection = () => {
           })}
         </div>
       </div>
+
+      {/* Read-Only Event Detail Popup Modal */}
+      {selectedEvent && (
+        <div 
+          className={`fixed inset-y-0 right-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 cursor-pointer overflow-y-auto transition-all ${
+            isSidebarOpen ? 'left-60' : 'left-0'
+          }`}
+          onClick={() => setSelectedEvent(null)}
+        >
+          <div 
+            className="bg-white dark:bg-[#202020] w-full max-w-sm rounded-2xl border border-neutral-200 dark:border-neutral-800 shadow-2xl overflow-hidden cursor-default flex flex-col p-5 space-y-4"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Header */}
+            <div className="flex items-center justify-between border-b border-neutral-200 dark:border-neutral-800 pb-3">
+              <div className="flex items-center gap-2">
+                {selectedEvent.type === 'voto' && <Award className="w-5 h-5 text-purple-500" />}
+                {selectedEvent.type === 'scadenza' && <Clock className="w-5 h-5 text-blue-500" />}
+                {selectedEvent.type === 'transazione' && <Wallet className="w-5 h-5 text-emerald-500" />}
+                <h3 className="text-sm font-bold text-neutral-900 dark:text-white">
+                  Dettaglio {selectedEvent.categoryName}
+                </h3>
+              </div>
+              <button
+                onClick={() => setSelectedEvent(null)}
+                className="p-1 rounded-md text-neutral-400 hover:text-neutral-700 dark:hover:text-neutral-200 transition-colors"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            {/* Event Details Content */}
+            <div className="space-y-3 text-xs">
+              <div>
+                <span className="text-[10px] font-semibold text-neutral-400 uppercase tracking-wider block">
+                  Elemento
+                </span>
+                <span className="text-sm font-bold text-neutral-900 dark:text-white">
+                  {selectedEvent.title}
+                </span>
+              </div>
+
+              <div>
+                <span className="text-[10px] font-semibold text-neutral-400 uppercase tracking-wider block">
+                  Data
+                </span>
+                <span className="font-mono text-neutral-700 dark:text-neutral-300">
+                  {selectedEvent.date}
+                </span>
+              </div>
+
+              {selectedEvent.subTitle && (
+                <div>
+                  <span className="text-[10px] font-semibold text-neutral-400 uppercase tracking-wider block">
+                    Dettagli
+                  </span>
+                  <span className="text-neutral-700 dark:text-neutral-300">
+                    {selectedEvent.subTitle}
+                  </span>
+                </div>
+              )}
+
+              {selectedEvent.type === 'voto' && selectedEvent.raw.notes && (
+                <div>
+                  <span className="text-[10px] font-semibold text-neutral-400 uppercase tracking-wider block">Note</span>
+                  <p className="text-neutral-600 dark:text-neutral-400 bg-neutral-50 dark:bg-neutral-900 p-2 rounded-lg border border-neutral-200 dark:border-neutral-800">
+                    {selectedEvent.raw.notes}
+                  </p>
+                </div>
+              )}
+
+              {selectedEvent.type === 'scadenza' && selectedEvent.raw.description && (
+                <div>
+                  <span className="text-[10px] font-semibold text-neutral-400 uppercase tracking-wider block">Descrizione Scadenza</span>
+                  <p className="text-neutral-600 dark:text-neutral-400 bg-neutral-50 dark:bg-neutral-900 p-2 rounded-lg border border-neutral-200 dark:border-neutral-800">
+                    {selectedEvent.raw.description}
+                  </p>
+                </div>
+              )}
+
+              {selectedEvent.type === 'transazione' && selectedEvent.raw.notes && (
+                <div>
+                  <span className="text-[10px] font-semibold text-neutral-400 uppercase tracking-wider block">Note Transazione</span>
+                  <p className="text-neutral-600 dark:text-neutral-400 bg-neutral-50 dark:bg-neutral-900 p-2 rounded-lg border border-neutral-200 dark:border-neutral-800">
+                    {selectedEvent.raw.notes}
+                  </p>
+                </div>
+              )}
+            </div>
+
+            {/* Footer */}
+            <div className="flex justify-end pt-2 border-t border-neutral-200 dark:border-neutral-800">
+              <button
+                onClick={() => setSelectedEvent(null)}
+                className="px-4 py-1.5 bg-neutral-900 dark:bg-white text-white dark:text-neutral-900 text-xs font-semibold rounded-lg hover:bg-neutral-800 dark:hover:bg-neutral-100 transition-colors"
+              >
+                Chiudi
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

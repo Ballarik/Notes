@@ -2,7 +2,6 @@ import React from 'react';
 import { WorkspaceProvider, useWorkspace } from './context/WorkspaceContext';
 import { Sidebar } from './components/Sidebar';
 import { Header } from './components/Header';
-import { CommandMenu } from './components/CommandMenu';
 import { HomeDashboard } from './pages/HomeDashboard';
 import { EconomiaSection } from './pages/EconomiaSection';
 import { ScuolaSection } from './pages/ScuolaSection';
@@ -32,7 +31,6 @@ export default function App() {
           <Header />
           <MainContent />
         </div>
-        <CommandMenu />
       </div>
     </WorkspaceProvider>
   );

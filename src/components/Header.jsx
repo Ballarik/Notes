@@ -72,19 +72,8 @@ export const Header = () => {
         </div>
       </div>
 
-      {/* Right side: Search, Theme Toggle & Quick Actions */}
+      {/* Right side: Theme Toggle */}
       <div className="flex items-center gap-1.5">
-        <button
-          onClick={() => setIsSearchOpen(true)}
-          className="flex items-center gap-2 text-xs text-neutral-400 dark:text-neutral-500 bg-neutral-100/80 dark:bg-neutral-800/80 hover:bg-neutral-200/70 dark:hover:bg-neutral-700/70 px-2.5 py-1 rounded-md transition-colors"
-        >
-          <Search className="w-3.5 h-3.5" />
-          <span className="hidden sm:inline">Cerca nel workspace...</span>
-          <kbd className="hidden md:inline-block text-[10px] bg-white dark:bg-neutral-900 px-1.5 py-0.5 rounded border border-neutral-200 dark:border-neutral-700 font-mono shadow-2xs">
-            ⌘K
-          </kbd>
-        </button>
-
         <button
           onClick={() => setIsDarkMode(!isDarkMode)}
           title={isDarkMode ? 'Passa alla modalità chiara' : 'Passa alla modalità scura'}

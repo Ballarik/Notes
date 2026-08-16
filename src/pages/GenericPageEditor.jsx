@@ -1,9 +1,11 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useWorkspace } from '../context/WorkspaceContext';
-import { Plus, Trash2, CheckSquare, Square, Type, Heading1, Heading2, MessageSquare } from 'lucide-react';
+import { Plus, Trash2, CheckSquare, Square, Type, Heading2, MessageSquare } from 'lucide-react';
+import { DeleteConfirmModal } from '../components/DeleteConfirmModal';
 
 export const GenericPageEditor = () => {
   const { activePageId, customPages, updatePage } = useWorkspace();
+  const [deleteState, setDeleteState] = useState({ open: false, block: null, mousePos: null });
 
   const page = customPages.find(p => p.id === activePageId);
 
@@ -33,20 +35,71 @@ export const GenericPageEditor = () => {
     updatePage(page.id, { blocks: [...(page.blocks || []), newBlock] });
   };
 
+  const addBlockAfter = (targetBlockId, type = 'paragraph') => {
+    const currentBlocks = page.blocks || [];
+    const idx = currentBlocks.findIndex(b => b.id === targetBlockId);
+    const newBlock = {
+      id: 'b_' + Date.now() + '_' + Math.random().toString(36).substr(2, 4),
+      type,
+      content: '',
+      checked: false
+    };
+
+    const updated = [...currentBlocks];
+    if (idx !== -1) {
+      updated.splice(idx + 1, 0, newBlock);
+    } else {
+      updated.push(newBlock);
+    }
+    updatePage(page.id, { blocks: updated });
+  };
+
   const updateBlock = (blockId, fields) => {
-    const updatedBlocks = page.blocks.map(b => b.id === blockId ? { ...b, ...fields } : b);
+    const updatedBlocks = (page.blocks || []).map(b => b.id === blockId ? { ...b, ...fields } : b);
     updatePage(page.id, { blocks: updatedBlocks });
   };
 
-  const deleteBlock = (blockId) => {
-    const updatedBlocks = page.blocks.filter(b => b.id !== blockId);
-    updatePage(page.id, { blocks: updatedBlocks });
+  const handleTrashClick = (e, block) => {
+    e.stopPropagation();
+    setDeleteState({
+      open: true,
+      block,
+      mousePos: { x: e.clientX, y: e.clientY }
+    });
+  };
+
+  const handleConfirmDeleteBlock = () => {
+    if (deleteState.block) {
+      const updatedBlocks = (page.blocks || []).filter(b => b.id !== deleteState.block.id);
+      updatePage(page.id, { blocks: updatedBlocks });
+      setDeleteState({ open: false, block: null, mousePos: null });
+    }
+  };
+
+  // Helper for auto-resizing textarea on input/mount
+  const handleTextareaInput = (e) => {
+    const target = e.target;
+    target.style.height = 'auto';
+    target.style.height = `${target.scrollHeight}px`;
+  };
+
+  const handleKeyDown = (e, block) => {
+    if (e.key === 'Enter') {
+      if (e.shiftKey) {
+        // Shift + Enter: normal line break (vai a capo nello stesso blocco)
+        setTimeout(() => handleTextareaInput(e), 0);
+      } else {
+        // Enter semplice: crea un nuovo blocco paragrafo subito sotto
+        e.preventDefault();
+        addBlockAfter(block.id, block.type === 'todo' ? 'todo' : 'paragraph');
+      }
+    }
   };
 
   const emojis = ['📄', '📌', '🚀', '💡', '📚', '🎯', '⚙️', '📝', '✨', '🔥'];
 
   return (
-    <div className="max-w-4xl mx-auto p-4 sm:p-6 lg:p-8 space-y-6 animate-fade-in">
+    <div className="max-w-4xl mx-auto p-4 sm:p-6 lg:p-8 space-y-6 animate-fade-in pb-16">
       {/* Icon Picker & Cover header */}
       <div className="space-y-4">
         <div className="flex items-center gap-2">
@@ -78,15 +131,24 @@ export const GenericPageEditor = () => {
 
         <div className="text-xs text-neutral-400 border-b border-neutral-200 dark:border-neutral-800 pb-3 flex items-center justify-between">
           <span>Ultima modifica: {page.updatedAt || 'Di recente'}</span>
-          <span>Editor a blocchi Notion</span>
+          <span>Pagine Personali • Notion Style Editor</span>
         </div>
       </div>
 
       {/* Blocks List */}
       <div className="space-y-3 min-h-[300px]">
+        {(!page.blocks || page.blocks.length === 0) && (
+          <div 
+            onClick={() => addBlock('paragraph')}
+            className="p-4 border-2 border-dashed border-neutral-200 dark:border-neutral-800 rounded-xl text-center text-xs text-neutral-400 cursor-pointer hover:border-purple-400 transition-colors"
+          >
+            Clicca qui o sui pulsanti sotto per aggiungere il primo blocco di testo.
+          </div>
+        )}
+
         {page.blocks && page.blocks.map(block => (
           <div key={block.id} className="group flex items-start gap-2">
-            {/* Block Icon / Type */}
+            {/* Block Icon / Checkbox */}
             {block.type === 'todo' && (
               <button
                 onClick={() => updateBlock(block.id, { checked: !block.checked })}
@@ -100,11 +162,13 @@ export const GenericPageEditor = () => {
               </button>
             )}
 
+            {/* Block Content Input / Textarea */}
             {block.type === 'h2' ? (
               <input
                 type="text"
                 value={block.content}
                 onChange={(e) => updateBlock(block.id, { content: e.target.value })}
+                onKeyDown={(e) => handleKeyDown(e, block)}
                 placeholder="Intestazione 2..."
                 className="w-full text-lg font-bold bg-transparent text-neutral-900 dark:text-white focus:outline-none placeholder-neutral-300"
               />
@@ -113,6 +177,7 @@ export const GenericPageEditor = () => {
                 type="text"
                 value={block.content}
                 onChange={(e) => updateBlock(block.id, { content: e.target.value })}
+                onKeyDown={(e) => handleKeyDown(e, block)}
                 placeholder="Elemento della lista..."
                 className={`w-full text-sm bg-transparent text-neutral-800 dark:text-neutral-200 focus:outline-none ${
                   block.checked ? 'line-through text-neutral-400' : ''
@@ -122,15 +187,23 @@ export const GenericPageEditor = () => {
               <textarea
                 value={block.content}
                 onChange={(e) => updateBlock(block.id, { content: e.target.value })}
-                placeholder="Scrivi qualcosa o usa i pulsanti sotto..."
+                onInput={handleTextareaInput}
+                onKeyDown={(e) => handleKeyDown(e, block)}
+                placeholder="Scrivi qualcosa o usa i pulsanti sotto... (Enter = nuovo blocco, Shift+Enter = vai a capo)"
                 rows={1}
-                className="w-full text-sm bg-transparent text-neutral-800 dark:text-neutral-200 focus:outline-none resize-none leading-relaxed"
+                ref={(el) => {
+                  if (el) {
+                    el.style.height = 'auto';
+                    el.style.height = `${el.scrollHeight}px`;
+                  }
+                }}
+                className="w-full text-sm bg-transparent text-neutral-800 dark:text-neutral-200 focus:outline-none resize-none leading-relaxed overflow-hidden"
               />
             )}
 
             <button
-              onClick={() => deleteBlock(block.id)}
-              className="opacity-0 group-hover:opacity-100 p-1 text-neutral-400 hover:text-red-500 transition-opacity rounded"
+              onClick={(e) => handleTrashClick(e, block)}
+              className="opacity-0 group-hover:opacity-100 p-1 text-neutral-400 hover:text-red-500 transition-opacity rounded shrink-0"
               title="Elimina blocco"
             >
               <Trash2 className="w-3.5 h-3.5" />
@@ -164,6 +237,15 @@ export const GenericPageEditor = () => {
           <span>Checklist</span>
         </button>
       </div>
+
+      {/* Delete Confirmation Modal for Text Block */}
+      <DeleteConfirmModal
+        isOpen={deleteState.open}
+        onClose={() => setDeleteState({ open: false, block: null, mousePos: null })}
+        onConfirm={handleConfirmDeleteBlock}
+        mousePos={deleteState.mousePos}
+        itemTitle={deleteState.block?.content ? `il blocco "${deleteState.block.content.slice(0, 25)}${deleteState.block.content.length > 25 ? '...' : ''}"` : 'questo blocco di testo'}
+      />
     </div>
   );
 };

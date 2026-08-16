@@ -1,5 +1,6 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useWorkspace } from '../context/WorkspaceContext';
+import { DeleteConfirmModal } from './DeleteConfirmModal';
 import { 
   Home, 
   Wallet, 
@@ -27,6 +28,15 @@ export const Sidebar = () => {
     setIsSearchOpen
   } = useWorkspace();
 
+  const [deletePageState, setDeletePageState] = useState({ open: false, page: null, mousePos: null });
+
+  const handleConfirmDeletePage = () => {
+    if (deletePageState.page) {
+      deleteCustomPage(deletePageState.page.id);
+      setDeletePageState({ open: false, page: null, mousePos: null });
+    }
+  };
+
   if (!isSidebarOpen) return null;
 
   return (
@@ -51,18 +61,6 @@ export const Sidebar = () => {
             <PanelLeftClose className="w-3.5 h-3.5" />
           </button>
         </div>
-
-        {/* Quick Search */}
-        <button 
-          onClick={() => setIsSearchOpen(true)}
-          className="w-full flex items-center justify-between px-2.5 py-1.5 text-xs text-neutral-600 dark:text-neutral-400 rounded-md hover:bg-neutral-200/50 dark:hover:bg-neutral-800/50 transition-colors"
-        >
-          <div className="flex items-center gap-2">
-            <Search className="w-3.5 h-3.5 text-neutral-400" />
-            <span>Cerca rapida</span>
-          </div>
-          <kbd className="text-[10px] text-neutral-400 bg-neutral-200/50 dark:bg-neutral-800 px-1 rounded font-mono">⌘K</kbd>
-        </button>
 
         {/* Main Sections Header */}
         <div className="pt-2">
@@ -153,7 +151,11 @@ export const Sidebar = () => {
                 <button
                   onClick={(e) => {
                     e.stopPropagation();
-                    deleteCustomPage(page.id);
+                    setDeletePageState({
+                      open: true,
+                      page,
+                      mousePos: { x: e.clientX, y: e.clientY }
+                    });
                   }}
                   title="Elimina pagina"
                   className="opacity-0 group-hover:opacity-100 p-0.5 hover:bg-neutral-300 dark:hover:bg-neutral-700 rounded text-neutral-400 hover:text-red-500 transition-all"
@@ -174,13 +176,15 @@ export const Sidebar = () => {
         </div>
       </div>
 
-      {/* Footer Area */}
-      <div className="p-2 border-t border-neutral-200/80 dark:border-neutral-800/80">
-        <div className="flex items-center gap-2 p-2 rounded-md bg-neutral-100 dark:bg-neutral-800/60 text-xs text-neutral-500 dark:text-neutral-400">
-          <Sparkles className="w-3.5 h-3.5 text-amber-500 shrink-0" />
-          <span className="truncate">Notion Workspace v1.0</span>
-        </div>
-      </div>
+      {/* Delete Confirmation Modal for Custom Page */}
+      <DeleteConfirmModal
+        isOpen={deletePageState.open}
+        onClose={() => setDeletePageState({ open: false, page: null, mousePos: null })}
+        onConfirm={handleConfirmDeletePage}
+        mousePos={deletePageState.mousePos}
+        itemTitle={deletePageState.page ? `la pagina "${deletePageState.page.title || 'Senza titolo'}"` : ''}
+      />
+
     </aside>
   );
 };

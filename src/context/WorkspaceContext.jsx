@@ -2,19 +2,25 @@ import React, { createContext, useContext, useState, useEffect } from 'react';
 
 const WorkspaceContext = createContext();
 
+const INITIAL_BASE_BALANCE = 840.00;
+
 const initialEconomyData = [
   { id: '1', date: '2026-08-15', description: 'Libri Scolastici', amount: 85.00, category: 'Scuola', type: 'uscita' },
-  { id: '2', date: '2026-08-14', description: 'Stipendio Lavoretto', amount: 350.00, category: 'Entrate', type: 'entrata' },
+  { id: '2', date: '2026-08-14', description: 'Stipendio Lavoretto', amount: 350.00, category: 'Stipendio', type: 'entrata' },
   { id: '3', date: '2026-08-12', description: 'Abbonamento Mezzi', amount: 35.00, category: 'Trasporti', type: 'uscita' },
   { id: '4', date: '2026-08-10', description: 'Cancelleria & Quaderni', amount: 18.50, category: 'Scuola', type: 'uscita' },
 ];
 
 const initialSchoolData = [
-  { id: 's1', subject: 'Matematica', title: 'Verifica Integrali e Derivate', date: '2026-09-10', status: 'da_fare', grade: null },
-  { id: 's2', subject: 'Informatica', title: 'Progetto React / Notion Web App', date: '2026-08-20', status: 'in_corso', grade: null },
-  { id: 's3', subject: 'Fisica', title: 'Relazione Elettromagnetismo', date: '2026-08-18', status: 'completato', grade: '9/10' },
-  { id: 's4', subject: 'Italiano', title: 'Analisi del Testo - Divina Commedia', date: '2026-09-05', status: 'da_fare', grade: null },
+  { id: 's1', subject: 'Matematica', title: 'Verifica Integrali e Derivate', date: '2026-09-10', status: 'da_fare', priority: 'Alta' },
+  { id: 's2', subject: 'Informatica', title: 'Progetto React / Notion Web App', date: '2026-08-20', status: 'in_corso', priority: 'Media' },
+  { id: 's3', subject: 'Fisica', title: 'Relazione Elettromagnetismo', date: '2026-08-18', status: 'completato', priority: 'Alta' },
+  { id: 's4', subject: 'Italiano', title: 'Analisi del Testo - Divina Commedia', date: '2026-09-05', status: 'da_fare', priority: 'Bassa' },
 ];
+
+const initialGradesData = [];
+
+
 
 const initialCalendarEvents = [
   { id: 'e1', date: '2026-08-20', title: 'Consegna Progetto Notion', category: 'scuola', time: '15:00', notes: 'Completare la dashboard a 2 colonne' },
@@ -61,12 +67,21 @@ export const WorkspaceProvider = ({ children }) => {
   // App Data (with LocalStorage)
   const [transactions, setTransactions] = useState(() => {
     const saved = localStorage.getItem('notion_transactions');
-    return saved ? JSON.parse(saved) : initialEconomyData;
+    if (saved) {
+      const parsed = JSON.parse(saved);
+      return parsed.filter(t => t.description !== 'Saldo Iniziale');
+    }
+    return initialEconomyData;
   });
 
   const [schoolItems, setSchoolItems] = useState(() => {
     const saved = localStorage.getItem('notion_school');
     return saved ? JSON.parse(saved) : initialSchoolData;
+  });
+
+  const [grades, setGrades] = useState(() => {
+    const saved = localStorage.getItem('notion_grades');
+    return saved ? JSON.parse(saved) : initialGradesData;
   });
 
   const [calendarEvents, setCalendarEvents] = useState(() => {
@@ -110,6 +125,10 @@ export const WorkspaceProvider = ({ children }) => {
   }, [schoolItems]);
 
   useEffect(() => {
+    localStorage.setItem('notion_grades', JSON.stringify(grades));
+  }, [grades]);
+
+  useEffect(() => {
     localStorage.setItem('notion_calendar', JSON.stringify(calendarEvents));
   }, [calendarEvents]);
 
@@ -125,9 +144,24 @@ export const WorkspaceProvider = ({ children }) => {
     localStorage.setItem('notion_quickNotes', quickNotes);
   }, [quickNotes]);
 
+  const [economyCategories, setEconomyCategories] = useState(() => {
+    const saved = localStorage.getItem('notion_economy_categories');
+    return saved ? JSON.parse(saved) : ['Stipendio', 'Alimentari', 'Trasporti', 'Intrattenimento', 'Abbonamenti', 'Salute & Cura', 'Shopping', 'Scuola', 'Altro'];
+  });
+
   useEffect(() => {
-    localStorage.setItem('notion_activeTab', activeTab);
-  }, [activeTab]);
+    localStorage.setItem('notion_economy_categories', JSON.stringify(economyCategories));
+  }, [economyCategories]);
+
+  const addEconomyCategory = (newCat) => {
+    if (newCat && !economyCategories.includes(newCat)) {
+      setEconomyCategories(prev => [...prev, newCat]);
+    }
+  };
+
+  const deleteEconomyCategory = (catToDelete) => {
+    setEconomyCategories(prev => prev.filter(c => c !== catToDelete));
+  };
 
   // Global Handlers
   const addTransaction = (newTx) => {
@@ -145,8 +179,8 @@ export const WorkspaceProvider = ({ children }) => {
   const toggleSchoolStatus = (id) => {
     setSchoolItems(prev => prev.map(item => {
       if (item.id === id) {
-        const statusMap = { 'da_fare': 'in_corso', 'in_corso': 'completato', 'completato': 'da_fare' };
-        return { ...item, status: statusMap[item.status] || 'da_fare' };
+        const newStatus = item.status === 'completato' ? 'da_fare' : 'completato';
+        return { ...item, status: newStatus };
       }
       return item;
     }));
@@ -154,6 +188,14 @@ export const WorkspaceProvider = ({ children }) => {
 
   const deleteSchoolItem = (id) => {
     setSchoolItems(prev => prev.filter(i => i.id !== id));
+  };
+
+  const addGrade = (gradeObj) => {
+    setGrades(prev => [{ ...gradeObj, id: Date.now().toString() }, ...prev]);
+  };
+
+  const deleteGrade = (id) => {
+    setGrades(prev => prev.filter(g => g.id !== id));
   };
 
   const addCalendarEvent = (event) => {
@@ -207,13 +249,20 @@ export const WorkspaceProvider = ({ children }) => {
       setIsDarkMode,
       isSearchOpen,
       setIsSearchOpen,
+      initialBaseBalance: INITIAL_BASE_BALANCE,
       transactions,
       addTransaction,
       deleteTransaction,
+      economyCategories,
+      addEconomyCategory,
+      deleteEconomyCategory,
       schoolItems,
       addSchoolItem,
       toggleSchoolStatus,
       deleteSchoolItem,
+      grades,
+      addGrade,
+      deleteGrade,
       calendarEvents,
       addCalendarEvent,
       deleteCalendarEvent,

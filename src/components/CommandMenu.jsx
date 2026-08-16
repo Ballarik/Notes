@@ -60,9 +60,12 @@ export const CommandMenu = () => {
   );
 
   return (
-    <div className="fixed inset-0 z-50 bg-black/40 backdrop-blur-xs flex items-start justify-center pt-20 px-4 animate-fade-in">
+    <div 
+      className="fixed inset-0 z-50 bg-black/40 backdrop-blur-xs flex items-start justify-center pt-20 px-4 animate-fade-in cursor-pointer"
+      onClick={() => setIsSearchOpen(false)}
+    >
       <div 
-        className="bg-white dark:bg-[#202020] w-full max-w-lg rounded-xl border border-neutral-200 dark:border-neutral-800 shadow-2xl overflow-hidden"
+        className="bg-white dark:bg-[#202020] w-full max-w-lg rounded-xl border border-neutral-200 dark:border-neutral-800 shadow-2xl overflow-hidden cursor-default"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Input Header */}
