@@ -6,6 +6,7 @@ import { HomeDashboard } from './pages/HomeDashboard';
 import { EconomiaSection } from './pages/EconomiaSection';
 import { ScuolaSection } from './pages/ScuolaSection';
 import { CalendarioSection } from './pages/CalendarioSection';
+import { ImpostazioniSection } from './pages/ImpostazioniSection';
 import { GenericPageEditor } from './pages/GenericPageEditor';
 
 const MainContent = () => {
@@ -17,6 +18,7 @@ const MainContent = () => {
       {activeTab === 'economia' && <EconomiaSection />}
       {activeTab === 'scuola' && <ScuolaSection />}
       {activeTab === 'calendario' && <CalendarioSection />}
+      {activeTab === 'impostazioni' && <ImpostazioniSection />}
       {activeTab === 'custom_page' && <GenericPageEditor />}
     </main>
   );

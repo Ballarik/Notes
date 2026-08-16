@@ -12,7 +12,10 @@ import {
   Trash2,
   BookOpen,
   Sparkles,
-  ChevronRight
+  ChevronRight,
+  Save,
+  Check,
+  Settings
 } from 'lucide-react';
 
 export const Sidebar = () => {
@@ -25,7 +28,9 @@ export const Sidebar = () => {
     createCustomPage, 
     deleteCustomPage, 
     navigateTo,
-    setIsSearchOpen
+    saveProjectFile,
+    saveStatus,
+    lastSaveTime
   } = useWorkspace();
 
   const [deletePageState, setDeletePageState] = useState({ open: false, page: null, mousePos: null });
@@ -100,7 +105,7 @@ export const Sidebar = () => {
                   : 'text-neutral-600 dark:text-neutral-400 hover:bg-neutral-200/50 dark:hover:bg-neutral-800/50'
               }`}
             >
-              <GraduationCap className="w-4 h-4 text-blue-500" />
+              <GraduationCap className="w-4 h-4 text-purple-500" />
               <span>Scuola & Studio</span>
             </button>
 
@@ -112,8 +117,20 @@ export const Sidebar = () => {
                   : 'text-neutral-600 dark:text-neutral-400 hover:bg-neutral-200/50 dark:hover:bg-neutral-800/50'
               }`}
             >
-              <Calendar className="w-4 h-4 text-purple-500" />
+              <Calendar className="w-4 h-4 text-blue-500" />
               <span>Calendario</span>
+            </button>
+
+            <button
+              onClick={() => navigateTo('impostazioni')}
+              className={`w-full flex items-center gap-2.5 px-2.5 py-1.5 text-xs font-medium rounded-md transition-colors ${
+                activeTab === 'impostazioni' 
+                  ? 'bg-neutral-200/80 dark:bg-neutral-800 text-neutral-900 dark:text-white font-semibold' 
+                  : 'text-neutral-600 dark:text-neutral-400 hover:bg-neutral-200/50 dark:hover:bg-neutral-800/50'
+              }`}
+            >
+              <Settings className="w-4 h-4 text-neutral-500" />
+              <span>Impostazioni</span>
             </button>
           </nav>
         </div>

@@ -1,0 +1,69 @@
+{
+  "appName": "Personal Workspace",
+  "version": "1.0",
+  "savedAt": "2026-08-16T15:57:41.099Z",
+  "userName": "Utente",
+  "initialBaseBalance": 0,
+  "baseBalance": 0,
+  "transactions": [],
+  "schoolItems": [],
+  "grades": [],
+  "calendarEvents": [
+    {
+      "id": "e1",
+      "date": "2026-08-20",
+      "title": "Consegna Progetto Notion",
+      "category": "scuola",
+      "time": "15:00",
+      "notes": "Completare la dashboard a 2 colonne"
+    },
+    {
+      "id": "e3",
+      "date": "2026-08-30",
+      "title": "Inizio Ripassi Settembre",
+      "category": "scuola",
+      "time": "09:00",
+      "notes": "Focus Matematica e Fisica"
+    }
+  ],
+  "homeStats": [
+    {
+      "id": "st1",
+      "label": "Saldo Economico",
+      "value": "€ 211,50",
+      "change": "+€ 350 sto mese",
+      "color": "emerald",
+      "icon": "Wallet"
+    },
+    {
+      "id": "st2",
+      "label": "Prossime Scadenze Scuola",
+      "value": "3 In sospeso",
+      "change": "Prossima: 18 Ago",
+      "color": "blue",
+      "icon": "GraduationCap"
+    },
+    {
+      "id": "st3",
+      "label": "Eventi Mese",
+      "value": "4 Registrati",
+      "change": "Calendario aggiornato",
+      "color": "purple",
+      "icon": "Calendar"
+    },
+    {
+      "id": "st4",
+      "label": "Media Voti Attuale",
+      "value": "9.0",
+      "change": "Ultimo voto: 9/10",
+      "color": "amber",
+      "icon": "BookOpen"
+    }
+  ],
+  "customPages": [],
+  "quickNotes": "Benvenuto!",
+  "economyCategories": [],
+  "directLinks": [],
+  "subjects": [],
+  "timetable": {}
+}

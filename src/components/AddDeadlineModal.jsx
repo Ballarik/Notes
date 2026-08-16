@@ -58,7 +58,7 @@ export const AddDeadlineModal = ({ isOpen, onClose, subjects, onAddDeadline }) =
         <div className="p-4 border-b border-neutral-200 dark:border-neutral-800 space-y-3">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-blue-100 dark:bg-blue-950 text-blue-700 dark:text-blue-300">
+              <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-purple-100 dark:bg-purple-950 text-purple-700 dark:text-purple-300">
                 Passaggio {step} di {totalSteps}
               </span>
               <span className="text-xs font-semibold text-neutral-800 dark:text-neutral-200">
@@ -79,7 +79,7 @@ export const AddDeadlineModal = ({ isOpen, onClose, subjects, onAddDeadline }) =
           {/* Top Progress Bar */}
           <div className="w-full bg-neutral-100 dark:bg-neutral-800 h-2 rounded-full overflow-hidden">
             <div 
-              className="bg-blue-600 h-full transition-all duration-300 ease-out"
+              className="bg-purple-600 h-full transition-all duration-300 ease-out"
               style={{ width: `${progressPercent}%` }}
             />
           </div>
@@ -98,7 +98,7 @@ export const AddDeadlineModal = ({ isOpen, onClose, subjects, onAddDeadline }) =
                   <button
                     key={s}
                     onClick={() => handleSelectSubject(s)}
-                    className="p-2.5 rounded-xl border border-neutral-200 dark:border-neutral-700 bg-neutral-50/50 dark:bg-neutral-800/40 hover:border-blue-500 hover:bg-blue-50 dark:hover:bg-blue-950/40 text-xs font-semibold text-neutral-800 dark:text-neutral-200 text-left transition-all hover:scale-[1.02]"
+                    className="p-2.5 rounded-xl border border-neutral-200 dark:border-neutral-700 bg-neutral-50/50 dark:bg-neutral-800/40 hover:border-purple-500 hover:bg-purple-50 dark:hover:bg-purple-950/40 text-xs font-semibold text-neutral-800 dark:text-neutral-200 text-left transition-all hover:scale-[1.02]"
                   >
                     {s}
                   </button>
@@ -120,7 +120,7 @@ export const AddDeadlineModal = ({ isOpen, onClose, subjects, onAddDeadline }) =
                   placeholder="es. Verifica su integrali, Consegna tesina, Esercizi pag. 140"
                   value={title}
                   onChange={(e) => setTitle(e.target.value)}
-                  className="w-full text-xs p-2.5 rounded-lg border border-neutral-300 dark:border-neutral-700 bg-white dark:bg-[#191919] focus:outline-none focus:ring-1 focus:ring-blue-500"
+                  className="w-full text-xs p-2.5 rounded-lg border border-neutral-300 dark:border-neutral-700 bg-white dark:bg-[#191919] text-neutral-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-purple-500"
                 />
               </div>
             </div>
@@ -138,7 +138,7 @@ export const AddDeadlineModal = ({ isOpen, onClose, subjects, onAddDeadline }) =
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
                 rows={4}
-                className="w-full text-xs p-3 rounded-lg border border-neutral-300 dark:border-neutral-700 bg-white dark:bg-[#191919] focus:outline-none resize-none leading-relaxed"
+                className="w-full text-xs p-3 rounded-lg border border-neutral-300 dark:border-neutral-700 bg-white dark:bg-[#191919] text-neutral-900 dark:text-white focus:outline-none resize-none leading-relaxed"
               />
             </div>
           )}
@@ -147,14 +147,14 @@ export const AddDeadlineModal = ({ isOpen, onClose, subjects, onAddDeadline }) =
           {step === 4 && (
             <div className="space-y-4 animate-fade-in">
               <div className="flex items-center gap-2 text-xs font-semibold text-neutral-700 dark:text-neutral-300">
-                <CalendarIcon className="w-4 h-4 text-blue-500" />
+                <CalendarIcon className="w-4 h-4 text-purple-500" />
                 <span>Seleziona la data di scadenza</span>
               </div>
 
               <AppleDatePicker
                 value={date}
                 onChange={setDate}
-                themeColor="blue"
+                themeColor="purple"
               />
             </div>
           )}
@@ -176,7 +176,7 @@ export const AddDeadlineModal = ({ isOpen, onClose, subjects, onAddDeadline }) =
             <button
               onClick={() => setStep(step + 1)}
               disabled={step === 1 && !subject}
-              className="px-4 py-1.5 text-xs font-semibold bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 flex items-center gap-1 transition-colors"
+              className="px-4 py-1.5 text-xs font-semibold bg-purple-600 text-white rounded-lg hover:bg-purple-700 disabled:opacity-50 flex items-center gap-1 transition-colors"
             >
               <span>Avanti</span>
               <ArrowRight className="w-3.5 h-3.5" />

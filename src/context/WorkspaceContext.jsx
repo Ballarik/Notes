@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useRef } from 'react';
 
 const WorkspaceContext = createContext();
 
@@ -19,8 +19,6 @@ const initialSchoolData = [
 ];
 
 const initialGradesData = [];
-
-
 
 const initialCalendarEvents = [
   { id: 'e1', date: '2026-08-20', title: 'Consegna Progetto Notion', category: 'scuola', time: '15:00', notes: 'Completare la dashboard a 2 colonne' },
@@ -54,8 +52,8 @@ const initialPages = [
 ];
 
 export const WorkspaceProvider = ({ children }) => {
-  // Navigation & UI State
-  const [activeTab, setActiveTab] = useState(() => localStorage.getItem('notion_activeTab') || 'home');
+  // Navigation & UI State (Always defaults to Home on page open)
+  const [activeTab, setActiveTab] = useState('home');
   const [activePageId, setActivePageId] = useState(null);
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [isDarkMode, setIsDarkMode] = useState(() => {
@@ -64,14 +62,10 @@ export const WorkspaceProvider = ({ children }) => {
   });
   const [isSearchOpen, setIsSearchOpen] = useState(false);
 
-  // App Data (with LocalStorage)
+  // App Data (with LocalStorage fallback)
   const [transactions, setTransactions] = useState(() => {
     const saved = localStorage.getItem('notion_transactions');
-    if (saved) {
-      const parsed = JSON.parse(saved);
-      return parsed.filter(t => t.description !== 'Saldo Iniziale');
-    }
-    return initialEconomyData;
+    return saved ? JSON.parse(saved).filter(t => t.description !== 'Saldo Iniziale') : initialEconomyData;
   });
 
   const [schoolItems, setSchoolItems] = useState(() => {
@@ -99,11 +93,112 @@ export const WorkspaceProvider = ({ children }) => {
     return saved ? JSON.parse(saved) : initialPages;
   });
 
-  const [quickNotes, setQuickNotes] = useState(() => {
-    return localStorage.getItem('notion_quickNotes') || '• Rivedere appunti di matematica\n• Controllare spese del mese\n• Preparare la lista delle statistiche della Home';
+  const [quickNotes, setQuickNotesState] = useState(() => {
+    const saved = localStorage.getItem('notion_quickNotes');
+    return saved !== null ? saved : '• Rivedere appunti di matematica\n• Controllare spese del mese';
   });
 
-  // Sync effect for Dark Mode
+  const setQuickNotes = (val) => {
+    setQuickNotesState(val);
+    localStorage.setItem('notion_quickNotes', val);
+  };
+
+  const [economyCategories, setEconomyCategories] = useState(() => {
+    const saved = localStorage.getItem('notion_economy_categories');
+    return saved ? JSON.parse(saved) : ['Stipendio', 'Alimentari', 'Trasporti', 'Intrattenimento', 'Abbonamenti', 'Salute & Cura', 'Shopping', 'Scuola', 'Altro'];
+  });
+
+  const [directLinks, setDirectLinks] = useState(() => {
+    const saved = localStorage.getItem('notion_direct_links');
+    return saved ? JSON.parse(saved) : [
+      { id: 'l1', name: 'Registro Elettronico (ClasseViva)', url: 'https://www.classeviva.spaggiari.eu' },
+      { id: 'l2', name: 'Google Classroom', url: 'https://classroom.google.com' }
+    ];
+  });
+
+  const defaultSubjects = [
+    "Chimica e biologia",
+    "Disegno e storia dell'arte",
+    "Filosofia",
+    "Fisica",
+    "Informatica",
+    "Inglese",
+    "Italiano",
+    "Matematica",
+    "Religione / Alternativa",
+    "Scienze motorie",
+    "Storia"
+  ];
+
+  const [subjects, setSubjects] = useState(() => {
+    const saved = localStorage.getItem('notion_subjects');
+    return saved ? JSON.parse(saved) : defaultSubjects;
+  });
+
+  const [timetable, setTimetable] = useState(() => {
+    const saved = localStorage.getItem('notion_timetable');
+    return saved ? JSON.parse(saved) : {
+      lun_1: 'Matematica', lun_2: 'Fisica', lun_3: 'Italiano', lun_4: 'Inglese',
+      mar_1: 'Informatica', mar_2: 'Informatica', mar_3: 'Chimica e biologia', mar_4: 'Storia',
+      mer_1: 'Matematica', mer_2: 'Filosofia', mer_3: 'Disegno e storia dell\'arte', mer_4: 'Scienze motorie',
+      gio_1: 'Fisica', gio_2: 'Italiano', gio_3: 'Italiano', gio_4: 'Inglese',
+      ven_1: 'Informatica', ven_2: 'Matematica', ven_3: 'Filosofia', ven_4: 'Religione / Alternativa'
+    };
+  });
+
+  const [userName, setUserNameState] = useState(() => {
+    const saved = localStorage.getItem('notion_userName');
+    return saved !== null ? saved : 'Riccardo';
+  });
+
+  const setUserName = (val) => {
+    setUserNameState(val);
+    localStorage.setItem('notion_userName', val);
+  };
+
+  const [initialBaseBalance, setInitialBaseBalanceState] = useState(() => {
+    const saved = localStorage.getItem('notion_baseBalance');
+    return saved !== null ? parseFloat(saved) : 840.00;
+  });
+
+  const setInitialBaseBalance = (val) => {
+    const num = isNaN(parseFloat(val)) ? 0 : parseFloat(val);
+    setInitialBaseBalanceState(num);
+    localStorage.setItem('notion_baseBalance', num.toString());
+  };
+
+  // Load from project file on initial mount ONCE
+  const isLoadedRef = useRef(false);
+  useEffect(() => {
+    const loadFromProjectFile = async () => {
+      try {
+        const res = await fetch('/api/load-workspace');
+        if (res.ok) {
+          const data = await res.json();
+          if (Array.isArray(data.transactions)) setTransactions(data.transactions.filter(t => t.description !== 'Saldo Iniziale'));
+          if (Array.isArray(data.schoolItems)) setSchoolItems(data.schoolItems);
+          if (Array.isArray(data.grades)) setGrades(data.grades);
+          if (Array.isArray(data.calendarEvents)) setCalendarEvents(data.calendarEvents);
+          if (Array.isArray(data.customPages)) setCustomPages(data.customPages);
+          if (typeof data.quickNotes === 'string') setQuickNotesState(data.quickNotes);
+          if (Array.isArray(data.economyCategories)) setEconomyCategories(data.economyCategories);
+          if (Array.isArray(data.directLinks)) setDirectLinks(data.directLinks);
+          if (Array.isArray(data.subjects)) setSubjects(data.subjects);
+          if (data.timetable && typeof data.timetable === 'object') setTimetable(data.timetable);
+          if (typeof data.userName === 'string') setUserNameState(data.userName);
+          if (typeof data.initialBaseBalance === 'number') setInitialBaseBalanceState(data.initialBaseBalance);
+          else if (typeof data.baseBalance === 'number') setInitialBaseBalanceState(data.baseBalance);
+        }
+      } catch (e) {
+        // Fallback silently to localStorage
+      } finally {
+        isLoadedRef.current = true;
+      }
+    };
+    loadFromProjectFile();
+  }, []);
+
+  // Sync effects for LocalStorage
   useEffect(() => {
     if (isDarkMode) {
       document.documentElement.classList.add('dark');
@@ -115,7 +210,6 @@ export const WorkspaceProvider = ({ children }) => {
     localStorage.setItem('notion_darkMode', JSON.stringify(isDarkMode));
   }, [isDarkMode]);
 
-  // Sync effect for LocalStorage
   useEffect(() => {
     localStorage.setItem('notion_transactions', JSON.stringify(transactions));
   }, [transactions]);
@@ -141,29 +235,108 @@ export const WorkspaceProvider = ({ children }) => {
   }, [customPages]);
 
   useEffect(() => {
-    localStorage.setItem('notion_quickNotes', quickNotes);
-  }, [quickNotes]);
-
-  const [economyCategories, setEconomyCategories] = useState(() => {
-    const saved = localStorage.getItem('notion_economy_categories');
-    return saved ? JSON.parse(saved) : ['Stipendio', 'Alimentari', 'Trasporti', 'Intrattenimento', 'Abbonamenti', 'Salute & Cura', 'Shopping', 'Scuola', 'Altro'];
-  });
-
-  useEffect(() => {
     localStorage.setItem('notion_economy_categories', JSON.stringify(economyCategories));
   }, [economyCategories]);
 
-  const addEconomyCategory = (newCat) => {
-    if (newCat && !economyCategories.includes(newCat)) {
-      setEconomyCategories(prev => [...prev, newCat]);
+  useEffect(() => {
+    localStorage.setItem('notion_direct_links', JSON.stringify(directLinks));
+  }, [directLinks]);
+
+  useEffect(() => {
+    localStorage.setItem('notion_subjects', JSON.stringify(subjects));
+  }, [subjects]);
+
+  useEffect(() => {
+    localStorage.setItem('notion_timetable', JSON.stringify(timetable));
+  }, [timetable]);
+
+  // Direct Save to Project Directory File (/project_data/workspace_data.json)
+  const [saveStatus, setSaveStatus] = useState('saved'); // 'saved' | 'saving'
+  const [lastSaveTime, setLastSaveTime] = useState(() => new Date().toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' }));
+
+  const saveProjectFile = async () => {
+    setSaveStatus('saving');
+    const projectData = {
+      appName: 'Personal Workspace',
+      version: '1.0',
+      savedAt: new Date().toISOString(),
+      userName,
+      initialBaseBalance,
+      baseBalance: initialBaseBalance,
+      transactions,
+      schoolItems,
+      grades,
+      calendarEvents,
+      homeStats,
+      customPages,
+      quickNotes,
+      economyCategories,
+      directLinks,
+      subjects,
+      timetable
+    };
+
+    try {
+      const res = await fetch('/api/save-workspace', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(projectData, null, 2)
+      });
+      if (res.ok) {
+        setSaveStatus('saved');
+        setLastSaveTime(new Date().toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' }));
+      } else {
+        setSaveStatus('saved');
+      }
+    } catch (err) {
+      setSaveStatus('saved');
     }
   };
 
-  const deleteEconomyCategory = (catToDelete) => {
-    setEconomyCategories(prev => prev.filter(c => c !== catToDelete));
-  };
+  // Debounced auto-save to project file on data changes (prevents rapid POST loop)
+  useEffect(() => {
+    if (!isLoadedRef.current) return;
+    const timer = setTimeout(() => {
+      saveProjectFile();
+    }, 1000);
+    return () => clearTimeout(timer);
+  }, [transactions, schoolItems, grades, calendarEvents, customPages, quickNotes, economyCategories, directLinks, userName, initialBaseBalance, subjects, timetable]);
 
   // Global Handlers
+  const updateTimetableCell = (dayKey, hourNum, subjectName) => {
+    const key = `${dayKey}_${hourNum}`;
+    setTimetable(prev => {
+      const copy = { ...prev };
+      if (!subjectName) {
+        delete copy[key];
+      } else {
+        copy[key] = subjectName;
+      }
+      return copy;
+    });
+  };
+
+  const clearTimetable = () => {
+    setTimetable({});
+  };
+  const addSubject = (name) => {
+    const trimmed = name.trim();
+    if (trimmed && !subjects.includes(trimmed)) {
+      setSubjects(prev => [...prev, trimmed].sort());
+    }
+  };
+
+  const deleteSubject = (name) => {
+    setSubjects(prev => prev.filter(s => s !== name));
+  };
+
+  const updateSubject = (oldName, newName) => {
+    const trimmed = newName.trim();
+    if (!trimmed) return;
+    setSubjects(prev => prev.map(s => s === oldName ? trimmed : s));
+    setGrades(prev => prev.map(g => g.subject === oldName ? { ...g, subject: trimmed } : g));
+    setSchoolItems(prev => prev.map(i => i.subject === oldName ? { ...i, subject: trimmed } : i));
+  };
   const addTransaction = (newTx) => {
     setTransactions(prev => [{ ...newTx, id: Date.now().toString() }, ...prev]);
   };
@@ -206,6 +379,24 @@ export const WorkspaceProvider = ({ children }) => {
     setCalendarEvents(prev => prev.filter(e => e.id !== id));
   };
 
+  const addEconomyCategory = (newCat) => {
+    if (newCat && !economyCategories.includes(newCat)) {
+      setEconomyCategories(prev => [...prev, newCat]);
+    }
+  };
+
+  const deleteEconomyCategory = (catToDelete) => {
+    setEconomyCategories(prev => prev.filter(c => c !== catToDelete));
+  };
+
+  const addDirectLink = (link) => {
+    setDirectLinks(prev => [{ ...link, id: Date.now().toString() }, ...prev]);
+  };
+
+  const deleteDirectLink = (id) => {
+    setDirectLinks(prev => prev.filter(l => l.id !== id));
+  };
+
   const createCustomPage = () => {
     const newPage = {
       id: 'p_' + Date.now(),
@@ -236,7 +427,7 @@ export const WorkspaceProvider = ({ children }) => {
 
   const navigateTo = (tab, pageId = null) => {
     setActiveTab(tab);
-    setActivePageId(pageId);
+    if (pageId) setActivePageId(pageId);
   };
 
   return (
@@ -249,7 +440,10 @@ export const WorkspaceProvider = ({ children }) => {
       setIsDarkMode,
       isSearchOpen,
       setIsSearchOpen,
-      initialBaseBalance: INITIAL_BASE_BALANCE,
+      userName,
+      setUserName,
+      initialBaseBalance,
+      setInitialBaseBalance,
       transactions,
       addTransaction,
       deleteTransaction,
@@ -260,6 +454,13 @@ export const WorkspaceProvider = ({ children }) => {
       addSchoolItem,
       toggleSchoolStatus,
       deleteSchoolItem,
+      subjects,
+      addSubject,
+      deleteSubject,
+      updateSubject,
+      timetable,
+      updateTimetableCell,
+      clearTimetable,
       grades,
       addGrade,
       deleteGrade,
@@ -274,6 +475,12 @@ export const WorkspaceProvider = ({ children }) => {
       deleteCustomPage,
       quickNotes,
       setQuickNotes,
+      directLinks,
+      addDirectLink,
+      deleteDirectLink,
+      saveProjectFile,
+      saveStatus,
+      lastSaveTime,
       navigateTo
     }}>
       {children}

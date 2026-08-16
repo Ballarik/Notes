@@ -10,7 +10,8 @@ import {
   GraduationCap, 
   Calendar as CalendarIcon,
   FileText,
-  Clock
+  Clock,
+  Settings
 } from 'lucide-react';
 
 export const Header = () => {
@@ -35,6 +36,8 @@ export const Header = () => {
         return { title: 'Scuola & Studio', icon: <GraduationCap className="w-4 h-4" /> };
       case 'calendario':
         return { title: 'Calendario Eventi', icon: <CalendarIcon className="w-4 h-4" /> };
+      case 'impostazioni':
+        return { title: 'Impostazioni Workspace', icon: <Settings className="w-4 h-4" /> };
       case 'custom_page':
         const page = customPages.find(p => p.id === activePageId);
         return { 
@@ -72,15 +75,8 @@ export const Header = () => {
         </div>
       </div>
 
-      {/* Right side: Theme Toggle */}
+      {/* Right side: (Clean Header) */}
       <div className="flex items-center gap-1.5">
-        <button
-          onClick={() => setIsDarkMode(!isDarkMode)}
-          title={isDarkMode ? 'Passa alla modalità chiara' : 'Passa alla modalità scura'}
-          className="p-1.5 rounded hover:bg-neutral-100 dark:hover:bg-neutral-800 text-neutral-600 dark:text-neutral-400 transition-colors"
-        >
-          {isDarkMode ? <Sun className="w-4 h-4 text-amber-400" /> : <Moon className="w-4 h-4 text-neutral-600" />}
-        </button>
       </div>
     </header>
   );
