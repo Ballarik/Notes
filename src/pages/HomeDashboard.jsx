@@ -11,7 +11,9 @@ import {
   X,
   CalendarDays,
   CalendarClock,
-  Smartphone
+  Smartphone,
+  CheckCircle2,
+  AlertTriangle
 } from 'lucide-react';
 
 export const HomeDashboard = () => {
@@ -98,6 +100,37 @@ export const HomeDashboard = () => {
   const last10Grades = [...grades]
     .sort((a, b) => new Date(b.date || 0) - new Date(a.date || 0))
     .slice(0, 10);
+
+  // Next upcoming top-up calculation
+  const getNextTopUp = () => {
+    if (!topUps || topUps.length === 0) return null;
+    const now = new Date();
+    const currentDay = now.getDate();
+    const currentMonth = now.getMonth();
+    const currentYear = now.getFullYear();
+
+    const sorted = [...topUps].map(t => {
+      const renewalDay = Math.min(31, Math.max(1, parseInt(t.renewalDay, 10) || 1));
+      let targetDate = new Date(currentYear, currentMonth, renewalDay);
+      if (currentDay > renewalDay) {
+        targetDate = new Date(currentYear, currentMonth + 1, renewalDay);
+      }
+      const diffTime = targetDate - now;
+      const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+      return {
+        ...t,
+        targetDate,
+        diffDays,
+        renewalDay
+      };
+    }).sort((a, b) => a.targetDate - b.targetDate);
+
+    return sorted[0];
+  };
+
+  const nextTopUp = getNextTopUp();
+  const unpaidTopUps = (topUps || []).filter(t => (Number(t.currentBalance) || 0) < (Number(t.monthlyCost) || 0));
+  const monthNamesShortList = ['Gen', 'Feb', 'Mar', 'Apr', 'Mag', 'Giu', 'Lug', 'Ago', 'Set', 'Ott', 'Nov', 'Dic'];
 
   // Pending school deadlines
   const pendingSchoolItems = schoolItems
@@ -511,6 +544,11 @@ export const HomeDashboard = () => {
                 <h3 className="text-xs font-bold text-neutral-800 dark:text-neutral-200 uppercase tracking-wider text-[11px]">
                   Orario delle Lezioni
                 </h3>
+                {todayDayIdx === 0 && (
+                  <span className="text-[10px] font-semibold text-purple-700 dark:text-purple-300 bg-purple-100 dark:bg-purple-950/70 px-2 py-0.5 rounded-md border border-purple-200 dark:border-purple-800">
+                    Domenica: mostrato Lunedì
+                  </span>
+                )}
               </div>
               <button
                 onClick={() => navigateTo('scuola')}
@@ -575,7 +613,125 @@ export const HomeDashboard = () => {
             </div>
           </div>
 
-          {/* 3. Grafico dei Miei Soldi degli Ultimi 10 Giorni */}
+          {/* 3. Riquadri Ricariche: Prossima Ricarica & Stato Pagamenti (Due riquadri affiancati) */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            {/* Riquadro 1: Prossima Ricarica da Pagare */}
+            <div 
+              onClick={() => navigateTo('economia')}
+              className="notion-card p-3.5 space-y-2 bg-white dark:bg-[#202020] border border-neutral-200 dark:border-neutral-800 rounded-xl shadow-xs hover:border-emerald-400 dark:hover:border-emerald-600 transition-all cursor-pointer group flex flex-col justify-between"
+            >
+              <div className="space-y-1.5">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-1.5 text-xs font-bold text-neutral-800 dark:text-neutral-200 uppercase tracking-wider text-[11px]">
+                    <Smartphone className="w-3.5 h-3.5 text-emerald-500" />
+                    <span>Prossima Ricarica</span>
+                  </div>
+                  <ChevronRight className="w-3 h-3 text-neutral-400 group-hover:text-emerald-500 transition-colors" />
+                </div>
+
+                {nextTopUp ? (
+                  <div className="space-y-1 pt-0.5">
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-bold text-neutral-900 dark:text-white truncate max-w-[120px]" title={nextTopUp.name}>
+                        {nextTopUp.name}
+                      </span>
+                      <span className="text-xs font-extrabold font-mono text-emerald-600 dark:text-emerald-400">
+                        € {Number(nextTopUp.monthlyCost).toFixed(2)}
+                      </span>
+                    </div>
+
+                    <div className="text-[11px] text-neutral-500 dark:text-neutral-400 flex items-center justify-between font-mono">
+                      <span>
+                        {nextTopUp.renewalDay} {monthNamesShortList[nextTopUp.targetDate.getMonth()]}
+                      </span>
+                      <span className="text-emerald-600 dark:text-emerald-400 font-semibold">
+                        {nextTopUp.diffDays === 0 ? 'Oggi' : `tra ${nextTopUp.diffDays} ${nextTopUp.diffDays === 1 ? 'giorno' : 'giorni'}`}
+                      </span>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="text-xs text-neutral-400 italic py-2">
+                    Nessuna ricarica attiva
+                  </div>
+                )}
+              </div>
+
+              {nextTopUp && (
+                <div className="pt-1.5 border-t border-neutral-100 dark:border-neutral-800 flex items-center justify-between text-[10px]">
+                  <span className="text-neutral-400">Saldo conto:</span>
+                  <span className={`font-mono font-bold ${Number(nextTopUp.currentBalance) >= Number(nextTopUp.monthlyCost) ? 'text-neutral-700 dark:text-neutral-300' : 'text-red-500'}`}>
+                    € {Number(nextTopUp.currentBalance).toFixed(2)}
+                  </span>
+                </div>
+              )}
+            </div>
+
+            {/* Riquadro 2: Stato Ricariche (Tutto ok se posso pagare tutto, altrimenti segnala quelle scoperte) */}
+            <div 
+              onClick={() => navigateTo('economia')}
+              className={`notion-card p-3.5 space-y-2 rounded-xl shadow-xs transition-all cursor-pointer group flex flex-col justify-between border ${
+                unpaidTopUps.length === 0
+                  ? 'bg-emerald-50/50 dark:bg-emerald-950/20 border-emerald-200/80 dark:border-emerald-800/80 hover:border-emerald-400'
+                  : 'bg-red-50/50 dark:bg-red-950/20 border-red-200/80 dark:border-red-800/80 hover:border-red-400'
+              }`}
+            >
+              <div className="space-y-1.5">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-[11px]">
+                    {unpaidTopUps.length === 0 ? (
+                      <>
+                        <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
+                        <span className="text-emerald-800 dark:text-emerald-300">Copertura Canoni</span>
+                      </>
+                    ) : (
+                      <>
+                        <AlertTriangle className="w-3.5 h-3.5 text-red-600 dark:text-red-400" />
+                        <span className="text-red-800 dark:text-red-300">Ricarica Necessaria</span>
+                      </>
+                    )}
+                  </div>
+                  <ChevronRight className="w-3 h-3 text-neutral-400 group-hover:translate-x-0.5 transition-transform" />
+                </div>
+
+                {unpaidTopUps.length === 0 ? (
+                  <div className="space-y-0.5 pt-0.5">
+                    <div className="text-sm font-extrabold text-emerald-700 dark:text-emerald-300 flex items-center gap-1">
+                      <span>✓</span>
+                      <span>Tutto ok</span>
+                    </div>
+                    <p className="text-[10px] text-emerald-600/90 dark:text-emerald-400/90 leading-tight">
+                      Credito sufficiente su tutti i conti per i prossimi rinnovi.
+                    </p>
+                  </div>
+                ) : (
+                  <div className="space-y-1 pt-0.5">
+                    <div className="text-xs font-bold text-red-700 dark:text-red-300">
+                      {unpaidTopUps.length} {unpaidTopUps.length === 1 ? 'conto da ricaricare' : 'conti da ricaricare'}
+                    </div>
+                    <div className="space-y-0.5 max-h-12 overflow-y-auto pr-1">
+                      {unpaidTopUps.slice(0, 2).map(t => (
+                        <div key={t.id} className="text-[10px] text-red-600 dark:text-red-400 flex items-center justify-between">
+                          <span className="truncate max-w-[100px]">{t.name}:</span>
+                          <span className="font-mono font-semibold">mancano €{(Number(t.monthlyCost) - Number(t.currentBalance)).toFixed(2)}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              <div className="pt-1.5 border-t border-neutral-200/50 dark:border-neutral-800/80 flex items-center justify-between text-[10px]">
+                <span className="text-neutral-500 dark:text-neutral-400">
+                  {topUps.length} {topUps.length === 1 ? 'servizio attivo' : 'servizi attivi'}
+                </span>
+                <span className="font-semibold text-emerald-600 dark:text-emerald-400 group-hover:underline">
+                  Gestisci &rarr;
+                </span>
+              </div>
+            </div>
+          </div>
+
+          {/* 4. Grafico dei Miei Soldi degli Ultimi 10 Giorni */}
           <TenDayEconomyChart transactions={transactions} initialBaseBalance={initialBaseBalance} />
         </div>
       </div>
