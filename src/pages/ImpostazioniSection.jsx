@@ -462,7 +462,7 @@ export const ImpostazioniSection = () => {
             </div>
 
             <p className="text-[11px] text-neutral-400 leading-relaxed">
-              Scarica un backup completo dei tuoi dati in formato <span className="font-semibold text-neutral-600 dark:text-neutral-300">.json</span>, oppure importa un backup esistente per ripristinare materie, voti, pagine, saldo, categorie, transazioni, scadenze, vacanze, collegamenti e orario.
+              Scarica un backup completo dei tuoi dati in formato <span className="font-semibold text-neutral-600 dark:text-neutral-300">.json</span>, oppure importa un backup esistente per ripristinare materie, voti, pagine, saldo, patrimonio/oggetti, categorie, transazioni, scadenze, vacanze, collegamenti e orario.
             </p>
 
             {/* Toast feedback */}
@@ -509,7 +509,7 @@ export const ImpostazioniSection = () => {
             </div>
 
             <div className="text-[10px] text-neutral-400 leading-relaxed space-y-0.5">
-              <div>📦 <strong>Esporta</strong> — Scarica: materie, voti, pagine personali, saldo, categorie, transazioni (ultimi 90gg), scadenze in sospeso, vacanze, collegamenti diretti, orario lezioni.</div>
+              <div>📦 <strong>Esporta</strong> — Scarica: materie, voti, pagine personali, saldo, patrimonio/beni, categorie, transazioni (ultimi 90gg), scadenze in sospeso, vacanze, collegamenti diretti, orario lezioni.</div>
               <div>📥 <strong>Importa</strong> — Carica un file <code>.json</code> precedentemente esportato per ripristinare tutti i dati.</div>
             </div>
           </div>
@@ -619,7 +619,7 @@ export const ImpostazioniSection = () => {
             </div>
 
             <p className="text-xs text-neutral-600 dark:text-neutral-300 leading-relaxed">
-              Stai per importare un backup che sovrascriverà le materie, i voti, le pagine, il saldo, le categorie, le transazioni, le scadenze, le vacanze, i collegamenti e l'orario attualmente salvati. Vuoi continuare?
+              Stai per importare un backup che sovrascriverà le materie, i voti, le pagine, il saldo, il patrimonio/oggetti, le categorie, le transazioni, le scadenze, le vacanze, i collegamenti e l'orario attualmente salvati. Vuoi continuare?
             </p>
 
             {pendingImportData?._meta?.exportedAt && (

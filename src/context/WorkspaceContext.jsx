@@ -22,6 +22,12 @@ const initialGradesData = [];
 
 const initialHolidays = [];
 
+const initialAssets = [
+  { id: 'a1', name: 'Computer / Laptop', description: 'MacBook per studio e sviluppo', value: 1200.00, dateAdded: '2026-08-01' },
+  { id: 'a2', name: 'Smartphone', description: 'iPhone principale', value: 750.00, dateAdded: '2026-08-05' },
+  { id: 'a3', name: 'Bicicletta', description: 'Bici da città per spostamenti', value: 250.00, dateAdded: '2026-08-10' }
+];
+
 const initialCalendarEvents = [
   { id: 'e1', date: '2026-08-20', title: 'Consegna Progetto Notion', category: 'scuola', time: '15:00', notes: 'Completare la dashboard a 2 colonne' },
   { id: 'e2', date: '2026-08-25', title: 'Pianificazione Budget Mensile', category: 'economia', time: '18:00', notes: 'Revisione entrate e uscite' },
@@ -88,6 +94,11 @@ export const WorkspaceProvider = ({ children }) => {
   const [holidays, setHolidays] = useState(() => {
     const saved = localStorage.getItem('notion_holidays');
     return saved ? JSON.parse(saved) : initialHolidays;
+  });
+
+  const [assets, setAssets] = useState(() => {
+    const saved = localStorage.getItem('notion_assets');
+    return saved ? JSON.parse(saved) : initialAssets;
   });
 
   const [homeStats, setHomeStats] = useState(() => {
@@ -192,6 +203,7 @@ export const WorkspaceProvider = ({ children }) => {
           if (Array.isArray(data.directLinks)) setDirectLinks(data.directLinks);
           if (Array.isArray(data.subjects)) setSubjects(data.subjects);
           if (Array.isArray(data.holidays)) setHolidays(data.holidays);
+          if (Array.isArray(data.assets)) setAssets(data.assets);
           if (data.timetable && typeof data.timetable === 'object') setTimetable(data.timetable);
           if (typeof data.userName === 'string') setUserNameState(data.userName);
           if (typeof data.initialBaseBalance === 'number') setInitialBaseBalanceState(data.initialBaseBalance);
@@ -262,6 +274,10 @@ export const WorkspaceProvider = ({ children }) => {
     localStorage.setItem('notion_holidays', JSON.stringify(holidays));
   }, [holidays]);
 
+  useEffect(() => {
+    localStorage.setItem('notion_assets', JSON.stringify(assets));
+  }, [assets]);
+
   // Direct Save to Project Directory File (/project_data/workspace_data.json)
   const [saveStatus, setSaveStatus] = useState('saved'); // 'saved' | 'saving'
   const [lastSaveTime, setLastSaveTime] = useState(() => new Date().toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' }));
@@ -286,7 +302,8 @@ export const WorkspaceProvider = ({ children }) => {
       directLinks,
       subjects,
       timetable,
-      holidays
+      holidays,
+      assets
     };
 
     try {
@@ -313,7 +330,7 @@ export const WorkspaceProvider = ({ children }) => {
       saveProjectFile();
     }, 1000);
     return () => clearTimeout(timer);
-  }, [transactions, schoolItems, grades, calendarEvents, customPages, quickNotes, economyCategories, directLinks, userName, initialBaseBalance, subjects, timetable, holidays]);
+  }, [transactions, schoolItems, grades, calendarEvents, customPages, quickNotes, economyCategories, directLinks, userName, initialBaseBalance, subjects, timetable, holidays, assets]);
 
   // Global Handlers
   const updateTimetableCell = (dayKey, hourNum, subjectName) => {
@@ -409,6 +426,27 @@ export const WorkspaceProvider = ({ children }) => {
     return holidays.find(h => h.date === dateStr) || null;
   };
 
+  const addAsset = (asset) => {
+    setAssets(prev => [{
+      ...asset,
+      id: Date.now().toString(),
+      dateAdded: asset.dateAdded || new Date().toISOString().split('T')[0],
+      value: parseFloat(asset.value) || 0
+    }, ...prev]);
+  };
+
+  const updateAsset = (id, updatedFields) => {
+    setAssets(prev => prev.map(a => a.id === id ? {
+      ...a,
+      ...updatedFields,
+      value: updatedFields.value !== undefined ? (parseFloat(updatedFields.value) || 0) : a.value
+    } : a));
+  };
+
+  const deleteAsset = (id) => {
+    setAssets(prev => prev.filter(a => a.id !== id));
+  };
+
   const addEconomyCategory = (newCat) => {
     if (newCat && !economyCategories.includes(newCat)) {
       setEconomyCategories(prev => [...prev, newCat]);
@@ -489,6 +527,7 @@ export const WorkspaceProvider = ({ children }) => {
       directLinks,
       timetable,
       holidays,
+      assets,
       userName,
     };
 
@@ -521,6 +560,7 @@ export const WorkspaceProvider = ({ children }) => {
       });
       if (Array.isArray(data.directLinks)) setDirectLinks(data.directLinks);
       if (Array.isArray(data.holidays)) setHolidays(data.holidays);
+      if (Array.isArray(data.assets)) setAssets(data.assets);
       if (data.timetable && typeof data.timetable === 'object') setTimetable(data.timetable);
       if (typeof data.userName === 'string') {
         setUserNameState(data.userName);
@@ -578,6 +618,10 @@ export const WorkspaceProvider = ({ children }) => {
       updateHoliday,
       deleteHoliday,
       isHoliday,
+      assets,
+      addAsset,
+      updateAsset,
+      deleteAsset,
       homeStats,
       setHomeStats,
       customPages,
