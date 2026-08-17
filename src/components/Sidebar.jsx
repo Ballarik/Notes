@@ -117,7 +117,7 @@ export const Sidebar = () => {
                   : 'text-neutral-600 dark:text-neutral-400 hover:bg-neutral-200/50 dark:hover:bg-neutral-800/50'
               }`}
             >
-              <Calendar className="w-4 h-4 text-blue-500" />
+              <Calendar className="w-4 h-4 text-orange-500" />
               <span>Calendario</span>
             </button>
 

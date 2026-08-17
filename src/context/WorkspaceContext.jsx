@@ -20,6 +20,8 @@ const initialSchoolData = [
 
 const initialGradesData = [];
 
+const initialHolidays = [];
+
 const initialCalendarEvents = [
   { id: 'e1', date: '2026-08-20', title: 'Consegna Progetto Notion', category: 'scuola', time: '15:00', notes: 'Completare la dashboard a 2 colonne' },
   { id: 'e2', date: '2026-08-25', title: 'Pianificazione Budget Mensile', category: 'economia', time: '18:00', notes: 'Revisione entrate e uscite' },
@@ -81,6 +83,11 @@ export const WorkspaceProvider = ({ children }) => {
   const [calendarEvents, setCalendarEvents] = useState(() => {
     const saved = localStorage.getItem('notion_calendar');
     return saved ? JSON.parse(saved) : initialCalendarEvents;
+  });
+
+  const [holidays, setHolidays] = useState(() => {
+    const saved = localStorage.getItem('notion_holidays');
+    return saved ? JSON.parse(saved) : initialHolidays;
   });
 
   const [homeStats, setHomeStats] = useState(() => {
@@ -184,6 +191,7 @@ export const WorkspaceProvider = ({ children }) => {
           if (Array.isArray(data.economyCategories)) setEconomyCategories(data.economyCategories);
           if (Array.isArray(data.directLinks)) setDirectLinks(data.directLinks);
           if (Array.isArray(data.subjects)) setSubjects(data.subjects);
+          if (Array.isArray(data.holidays)) setHolidays(data.holidays);
           if (data.timetable && typeof data.timetable === 'object') setTimetable(data.timetable);
           if (typeof data.userName === 'string') setUserNameState(data.userName);
           if (typeof data.initialBaseBalance === 'number') setInitialBaseBalanceState(data.initialBaseBalance);
@@ -250,6 +258,10 @@ export const WorkspaceProvider = ({ children }) => {
     localStorage.setItem('notion_timetable', JSON.stringify(timetable));
   }, [timetable]);
 
+  useEffect(() => {
+    localStorage.setItem('notion_holidays', JSON.stringify(holidays));
+  }, [holidays]);
+
   // Direct Save to Project Directory File (/project_data/workspace_data.json)
   const [saveStatus, setSaveStatus] = useState('saved'); // 'saved' | 'saving'
   const [lastSaveTime, setLastSaveTime] = useState(() => new Date().toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' }));
@@ -273,7 +285,8 @@ export const WorkspaceProvider = ({ children }) => {
       economyCategories,
       directLinks,
       subjects,
-      timetable
+      timetable,
+      holidays
     };
 
     try {
@@ -300,7 +313,7 @@ export const WorkspaceProvider = ({ children }) => {
       saveProjectFile();
     }, 1000);
     return () => clearTimeout(timer);
-  }, [transactions, schoolItems, grades, calendarEvents, customPages, quickNotes, economyCategories, directLinks, userName, initialBaseBalance, subjects, timetable]);
+  }, [transactions, schoolItems, grades, calendarEvents, customPages, quickNotes, economyCategories, directLinks, userName, initialBaseBalance, subjects, timetable, holidays]);
 
   // Global Handlers
   const updateTimetableCell = (dayKey, hourNum, subjectName) => {
@@ -377,6 +390,23 @@ export const WorkspaceProvider = ({ children }) => {
 
   const deleteCalendarEvent = (id) => {
     setCalendarEvents(prev => prev.filter(e => e.id !== id));
+  };
+
+  const addHoliday = (holiday) => {
+    setHolidays(prev => [{ ...holiday, id: Date.now().toString() }, ...prev]);
+  };
+
+  const updateHoliday = (id, updatedFields) => {
+    setHolidays(prev => prev.map(h => h.id === id ? { ...h, ...updatedFields } : h));
+  };
+
+  const deleteHoliday = (id) => {
+    setHolidays(prev => prev.filter(h => h.id !== id));
+  };
+
+  const isHoliday = (dateStr) => {
+    if (!dateStr) return null;
+    return holidays.find(h => h.date === dateStr) || null;
   };
 
   const addEconomyCategory = (newCat) => {
@@ -458,6 +488,7 @@ export const WorkspaceProvider = ({ children }) => {
       pendingSchoolItems,
       directLinks,
       timetable,
+      holidays,
       userName,
     };
 
@@ -489,6 +520,7 @@ export const WorkspaceProvider = ({ children }) => {
         return [...data.pendingSchoolItems, ...existing];
       });
       if (Array.isArray(data.directLinks)) setDirectLinks(data.directLinks);
+      if (Array.isArray(data.holidays)) setHolidays(data.holidays);
       if (data.timetable && typeof data.timetable === 'object') setTimetable(data.timetable);
       if (typeof data.userName === 'string') {
         setUserNameState(data.userName);
@@ -541,6 +573,11 @@ export const WorkspaceProvider = ({ children }) => {
       calendarEvents,
       addCalendarEvent,
       deleteCalendarEvent,
+      holidays,
+      addHoliday,
+      updateHoliday,
+      deleteHoliday,
+      isHoliday,
       homeStats,
       setHomeStats,
       customPages,

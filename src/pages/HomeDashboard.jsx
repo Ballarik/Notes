@@ -18,6 +18,7 @@ export const HomeDashboard = () => {
     transactions, 
     schoolItems, 
     grades,
+    holidays = [],
     timetable = {},
     initialBaseBalance = 840.00,
     userName = 'Riccardo',
@@ -182,6 +183,20 @@ export const HomeDashboard = () => {
       }
     });
 
+    // Holidays
+    holidays.forEach(h => {
+      if (h.date === dateStr) {
+        events.push({
+          id: `hol-${h.id}`,
+          type: 'vacanza',
+          categoryName: 'Vacanza',
+          title: h.name,
+          badgeBg: 'bg-orange-100 text-orange-900 dark:bg-orange-950/80 dark:text-orange-200 border border-orange-300 dark:border-orange-800',
+          data: h
+        });
+      }
+    });
+
     return events;
   };
 
@@ -319,7 +334,7 @@ export const HomeDashboard = () => {
           <div className="notion-card p-4 space-y-3 bg-white dark:bg-[#202020] border border-neutral-200 dark:border-neutral-800 rounded-xl shadow-xs">
             <div className="flex items-center justify-between pb-2 border-b border-neutral-200 dark:border-neutral-800">
               <div className="flex items-center gap-2">
-                <CalendarDays className="w-4 h-4 text-purple-500" />
+                <CalendarDays className="w-4 h-4 text-orange-500" />
                 <h3 className="text-xs font-bold text-neutral-800 dark:text-neutral-200 uppercase tracking-wider text-[11px]">
                   {formatHomeWeekHeader()}
                 </h3>
@@ -327,7 +342,7 @@ export const HomeDashboard = () => {
 
               <button
                 onClick={() => navigateTo('calendario')}
-                className="text-[11px] text-neutral-400 hover:text-purple-500 flex items-center gap-0.5 transition-colors"
+                className="text-[11px] text-neutral-400 hover:text-orange-500 flex items-center gap-0.5 transition-colors"
               >
                 <span>Calendario completo</span>
                 <ChevronRight className="w-3 h-3" />
@@ -340,40 +355,62 @@ export const HomeDashboard = () => {
                 const formattedDate = d.toISOString().split('T')[0];
                 const dayEvents = getHomeEventsForDate(formattedDate);
                 const isToday = new Date().toISOString().split('T')[0] === formattedDate;
+                const holidayObj = holidays.find(h => h.date === formattedDate);
+                const hasHoliday = !!holidayObj;
+                const otherEvents = dayEvents.filter(ev => ev.type !== 'vacanza');
 
                 return (
                   <div 
                     key={formattedDate}
                     className={`min-h-[140px] p-1.5 rounded-xl border flex flex-col justify-between transition-all ${
-                      isToday 
-                        ? 'bg-purple-50/50 dark:bg-purple-950/20 border-purple-400 dark:border-purple-700' 
-                        : 'bg-white dark:bg-[#191919] border-neutral-200/70 dark:border-neutral-800'
+                      hasHoliday
+                        ? 'bg-orange-500 text-white border-orange-600 shadow-sm'
+                        : isToday 
+                          ? 'bg-orange-50/50 dark:bg-orange-950/20 border-orange-400 dark:border-orange-600' 
+                          : 'bg-white dark:bg-[#191919] border-neutral-200/70 dark:border-neutral-800'
                     }`}
                   >
-                    <div className="flex items-center justify-between border-b border-neutral-100 dark:border-neutral-800 pb-1">
-                      <div className="text-[10px] font-bold text-neutral-400 uppercase">
+                    <div className={`flex items-start justify-between border-b pb-1 gap-1 ${hasHoliday ? 'border-white/20' : 'border-neutral-100 dark:border-neutral-800'}`}>
+                      <div className={`text-[10px] font-bold uppercase ${hasHoliday ? 'text-white/80' : 'text-neutral-400'}`}>
                         {weekdayNamesShort[index]}
                       </div>
-                      <span className={`text-[11px] font-extrabold ${isToday ? 'text-purple-600 dark:text-purple-400' : 'text-neutral-700 dark:text-neutral-300'}`}>
-                        {d.getDate()}
-                      </span>
+                      <div className="flex items-baseline gap-1 min-w-0 flex-1 justify-end">
+                        <span className={`text-[11px] font-extrabold shrink-0 ${hasHoliday ? 'text-white drop-shadow-xs' : isToday ? 'text-orange-600 dark:text-orange-400' : 'text-neutral-700 dark:text-neutral-300'}`}>
+                          {d.getDate()}
+                        </span>
+                        {hasHoliday && (
+                          <span 
+                            onClick={() => setSelectedHomeEvent({
+                              id: `hol-${holidayObj.id}`,
+                              type: 'vacanza',
+                              categoryName: 'Vacanza',
+                              title: holidayObj.name,
+                              data: holidayObj
+                            })}
+                            className="text-[10px] font-bold text-white truncate max-w-[60px] cursor-pointer hover:underline" 
+                            title={holidayObj.name}
+                          >
+                            {holidayObj.name}
+                          </span>
+                        )}
+                      </div>
                     </div>
 
-                    {/* Day events pills for current week */}
+                    {/* Day events pills for current week (transactions, etc.) */}
                     <div className="space-y-1 mt-1 overflow-y-auto max-h-24 scrollbar-none flex-1">
-                      {dayEvents.length > 0 ? (
-                        dayEvents.map(ev => (
+                      {otherEvents.length > 0 ? (
+                        otherEvents.map(ev => (
                           <div 
                             key={ev.id}
                             onClick={() => setSelectedHomeEvent(ev)}
-                            className={`px-1 py-0.5 rounded text-[9px] font-bold cursor-pointer truncate ${ev.badgeBg}`}
+                            className={`px-1 py-0.5 rounded text-[9px] font-bold cursor-pointer truncate shadow-xs ${ev.badgeBg}`}
                             title={`${ev.title} - Clicca per i dettagli`}
                           >
                             <div className="truncate">{ev.title}</div>
                           </div>
                         ))
                       ) : (
-                        <div className="text-[9px] text-neutral-300 dark:text-neutral-600 italic text-center py-2">
+                        <div className={`text-[9px] italic text-center py-2 ${hasHoliday ? 'text-white/70' : 'text-neutral-300 dark:text-neutral-600'}`}>
                           —
                         </div>
                       )}
@@ -541,7 +578,7 @@ export const HomeDashboard = () => {
               <div className="p-3 rounded-xl bg-neutral-50 dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 space-y-1">
                 <span className="text-[10px] font-bold text-neutral-400 uppercase tracking-wider block">Titolo / Descrizione</span>
                 <div className="text-sm font-bold text-neutral-900 dark:text-white">
-                  {selectedHomeEvent.data.title || selectedHomeEvent.data.description || selectedHomeEvent.data.subject}
+                  {selectedHomeEvent.data.name || selectedHomeEvent.data.title || selectedHomeEvent.data.description || selectedHomeEvent.data.subject}
                 </div>
               </div>
 

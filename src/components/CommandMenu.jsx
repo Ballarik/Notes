@@ -45,7 +45,7 @@ export const CommandMenu = () => {
     { id: 'home', title: 'Home Dashboard', type: 'sezione', icon: <Home className="w-4 h-4 text-blue-500" />, action: () => navigateTo('home') },
     { id: 'economia', title: 'Gestione Economia & Finanze', type: 'sezione', icon: <Wallet className="w-4 h-4 text-emerald-500" />, action: () => navigateTo('economia') },
     { id: 'scuola', title: 'Scuola & Studio', type: 'sezione', icon: <GraduationCap className="w-4 h-4 text-amber-500" />, action: () => navigateTo('scuola') },
-    { id: 'calendario', title: 'Calendario Eventi', type: 'sezione', icon: <Calendar className="w-4 h-4 text-purple-500" />, action: () => navigateTo('calendario') },
+    { id: 'calendario', title: 'Calendario Eventi', type: 'sezione', icon: <Calendar className="w-4 h-4 text-orange-500" />, action: () => navigateTo('calendario') },
     ...customPages.map(p => ({
       id: p.id,
       title: p.title || 'Pagina Senza Titolo',

@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useWorkspace } from '../context/WorkspaceContext';
 import { DeleteConfirmModal } from '../components/DeleteConfirmModal';
+import { HolidaysManagementModal } from '../components/HolidaysManagementModal';
 import { 
   Settings, 
   User, 
@@ -36,6 +37,9 @@ export const ImpostazioniSection = () => {
     addSubject,
     deleteSubject,
     updateSubject,
+    holidays = [],
+    updateHoliday,
+    deleteHoliday,
     saveProjectFile,
     saveStatus,
     lastSaveTime,
@@ -46,6 +50,7 @@ export const ImpostazioniSection = () => {
   const [inputName, setInputName] = useState(userName || 'Riccardo');
   const [inputBalance, setInputBalance] = useState(initialBaseBalance.toString());
   const [showSavedToast, setShowSavedToast] = useState(false);
+  const [isHolidaysModalOpen, setIsHolidaysModalOpen] = useState(false);
 
   // Subjects state for editing
   const [newSubjectInput, setNewSubjectInput] = useState('');
@@ -334,6 +339,32 @@ export const ImpostazioniSection = () => {
             </div>
           </div>
 
+          {/* Card 4: Gestione Vacanze & Festività */}
+          <div className="notion-card p-5 space-y-3 bg-white dark:bg-[#202020] border border-neutral-200 dark:border-neutral-800 rounded-xl shadow-xs">
+            <div className="flex items-center justify-between border-b border-neutral-100 dark:border-neutral-800 pb-2.5">
+              <div className="flex items-center gap-2">
+                <Sun className="w-4 h-4 text-orange-500" />
+                <h2 className="text-sm font-bold text-neutral-900 dark:text-white">
+                  Vacanze & Festività ({holidays.length})
+                </h2>
+              </div>
+            </div>
+
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <p className="text-[11px] text-neutral-400 leading-relaxed">
+                Visualizza l'elenco completo delle vacanze salvate, modifica i loro nomi o rimuovile dal calendario.
+              </p>
+              <button
+                type="button"
+                onClick={() => setIsHolidaysModalOpen(true)}
+                className="px-4 py-2 bg-orange-500 hover:bg-orange-600 text-white rounded-lg text-xs font-bold flex items-center justify-center gap-2 transition-colors shadow-xs shrink-0 cursor-pointer"
+              >
+                <Sun className="w-3.5 h-3.5" />
+                <span>Gestisci Vacanze ({holidays.length})</span>
+              </button>
+            </div>
+          </div>
+
           {/* Card 4: Tema Chiaro / Scuro */}
           <div className="notion-card p-5 space-y-3 bg-white dark:bg-[#202020] border border-neutral-200 dark:border-neutral-800 rounded-xl shadow-xs">
             <div className="flex items-center gap-2 border-b border-neutral-100 dark:border-neutral-800 pb-2.5">
@@ -431,7 +462,7 @@ export const ImpostazioniSection = () => {
             </div>
 
             <p className="text-[11px] text-neutral-400 leading-relaxed">
-              Scarica un backup completo dei tuoi dati in formato <span className="font-semibold text-neutral-600 dark:text-neutral-300">.json</span>, oppure importa un backup esistente per ripristinare materie, voti, pagine, saldo, categorie, transazioni, scadenze, collegamenti e orario.
+              Scarica un backup completo dei tuoi dati in formato <span className="font-semibold text-neutral-600 dark:text-neutral-300">.json</span>, oppure importa un backup esistente per ripristinare materie, voti, pagine, saldo, categorie, transazioni, scadenze, vacanze, collegamenti e orario.
             </p>
 
             {/* Toast feedback */}
@@ -478,7 +509,7 @@ export const ImpostazioniSection = () => {
             </div>
 
             <div className="text-[10px] text-neutral-400 leading-relaxed space-y-0.5">
-              <div>📦 <strong>Esporta</strong> — Scarica: materie, voti, pagine personali, saldo, categorie, transazioni (ultimi 90gg), scadenze in sospeso, collegamenti diretti, orario lezioni.</div>
+              <div>📦 <strong>Esporta</strong> — Scarica: materie, voti, pagine personali, saldo, categorie, transazioni (ultimi 90gg), scadenze in sospeso, vacanze, collegamenti diretti, orario lezioni.</div>
               <div>📥 <strong>Importa</strong> — Carica un file <code>.json</code> precedentemente esportato per ripristinare tutti i dati.</div>
             </div>
           </div>
@@ -531,6 +562,21 @@ export const ImpostazioniSection = () => {
                 </span>
               </div>
             </div>
+
+            {/* Preview Holidays */}
+            <div className="p-4 rounded-xl bg-orange-50/50 dark:bg-orange-950/20 border border-orange-200/80 dark:border-orange-800/80 space-y-1.5">
+              <div className="flex items-center justify-between">
+                <span className="text-[10px] font-bold text-orange-600 dark:text-orange-400 uppercase tracking-wider block">
+                  Vacanze Registrate
+                </span>
+                <span className="text-xs font-bold font-mono text-orange-600 dark:text-orange-400">
+                  {holidays.length}
+                </span>
+              </div>
+              <div className="text-xs text-neutral-600 dark:text-neutral-300">
+                {holidays.length === 0 ? 'Nessuna vacanza salvata' : `${holidays.length} ${holidays.length === 1 ? 'giorno festivo' : 'giorni festivi'} impostati`}
+              </div>
+            </div>
           </div>
         </div>
       </div>
@@ -542,6 +588,15 @@ export const ImpostazioniSection = () => {
         onConfirm={handleConfirmDeleteSubject}
         mousePos={deleteSubjectState.mousePos}
         itemTitle={deleteSubjectState.subjectName ? `la materia "${deleteSubjectState.subjectName}"` : ''}
+      />
+
+      {/* Modal Gestione Vacanze */}
+      <HolidaysManagementModal
+        isOpen={isHolidaysModalOpen}
+        onClose={() => setIsHolidaysModalOpen(false)}
+        holidays={holidays}
+        onUpdateHoliday={updateHoliday}
+        onDeleteHoliday={deleteHoliday}
       />
       {/* Import confirmation modal */}
       {showImportConfirm && (
@@ -564,7 +619,7 @@ export const ImpostazioniSection = () => {
             </div>
 
             <p className="text-xs text-neutral-600 dark:text-neutral-300 leading-relaxed">
-              Stai per importare un backup che sovrascriverà le materie, i voti, le pagine, il saldo, le categorie, le transazioni, le scadenze, i collegamenti e l'orario attualmente salvati. Vuoi continuare?
+              Stai per importare un backup che sovrascriverà le materie, i voti, le pagine, il saldo, le categorie, le transazioni, le scadenze, le vacanze, i collegamenti e l'orario attualmente salvati. Vuoi continuare?
             </p>
 
             {pendingImportData?._meta?.exportedAt && (

@@ -96,6 +96,13 @@ export const AppleDatePicker = ({ value, onChange, themeColor = 'purple' }) => {
         indicatorText: 'text-blue-600 dark:text-blue-400'
       };
     }
+    if (themeColor === 'orange' || themeColor === 'amber') {
+      return {
+        boxBg: 'bg-orange-50/90 dark:bg-orange-950/70 border-orange-500 text-orange-700 dark:text-orange-300',
+        activeText: 'text-orange-700 dark:text-orange-300 font-extrabold',
+        indicatorText: 'text-orange-600 dark:text-orange-400'
+      };
+    }
     return {
       boxBg: 'bg-purple-50/90 dark:bg-purple-950/70 border-purple-500 text-purple-700 dark:text-purple-300',
       activeText: 'text-purple-700 dark:text-purple-300 font-extrabold',

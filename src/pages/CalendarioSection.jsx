@@ -10,16 +10,20 @@ import {
   X,
   Filter,
   Grid,
-  CalendarDays
+  CalendarDays,
+  Sun,
+  Trash2
 } from 'lucide-react';
+import { AddHolidayModal } from '../components/AddHolidayModal';
 
 export const CalendarioSection = () => {
-  const { grades, schoolItems, transactions, isSidebarOpen } = useWorkspace();
+  const { grades, schoolItems, transactions, holidays = [], addHoliday, deleteHoliday, isSidebarOpen } = useWorkspace();
 
   const [currentDate, setCurrentDate] = useState(new Date()); // Active Date
   const [viewMode, setViewMode] = useState('mese'); // 'mese' | 'settimana'
-  const [selectedCategory, setSelectedCategory] = useState('tutti'); // tutti, voti, scadenze, economia
+  const [selectedCategory, setSelectedCategory] = useState('tutti'); // tutti, voti, scadenze, economia, vacanze
   const [selectedEvent, setSelectedEvent] = useState(null);
+  const [isAddHolidayModalOpen, setIsAddHolidayModalOpen] = useState(false);
 
   // Month View calculations
   const year = currentDate.getFullYear();
@@ -133,6 +137,24 @@ export const CalendarioSection = () => {
         });
     }
 
+    // 4. Vacanze
+    if (selectedCategory === 'tutti' || selectedCategory === 'vacanze') {
+      holidays
+        .filter(h => h.date === isoDate)
+        .forEach(h => {
+          events.push({
+            id: 'h_' + h.id,
+            type: 'vacanza',
+            categoryName: 'Vacanza',
+            title: h.name,
+            subTitle: 'Giorno di vacanza',
+            date: h.date,
+            badgeBg: 'bg-orange-100 text-orange-900 dark:bg-orange-950/90 dark:text-orange-200 border border-orange-300 dark:border-orange-800',
+            raw: h
+          });
+        });
+    }
+
     return events;
   };
 
@@ -145,10 +167,10 @@ export const CalendarioSection = () => {
   return (
     <div className="w-full px-4 md:px-8 pt-5 pb-16 mb-12 space-y-4 animate-fade-in">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-neutral-200/80 dark:border-neutral-800/80">
+      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3 pb-3 border-b border-neutral-200/80 dark:border-neutral-800/80">
         <div>
           <h1 className="text-xl font-bold text-neutral-900 dark:text-white flex items-center gap-2">
-            <CalendarIcon className="w-5 h-5 text-blue-500" />
+            <CalendarIcon className="w-5 h-5 text-orange-500" />
             <span>Calendario Integrato</span>
           </h1>
           <p className="text-[11px] text-neutral-500 dark:text-neutral-400 mt-0.5">
@@ -156,15 +178,24 @@ export const CalendarioSection = () => {
           </p>
         </div>
 
-        {/* Top Controls: View Mode Toggle & Category Filter */}
-        <div className="flex flex-wrap items-center gap-2">
+        {/* Top Controls: View Mode Toggle & Category Filter & Add Holiday */}
+        <div className="flex flex-wrap items-center justify-start sm:justify-end gap-2 shrink-0 sm:ml-auto">
+          {/* Add Holiday Button */}
+          <button
+            onClick={() => setIsAddHolidayModalOpen(true)}
+            className="px-3.5 py-1.5 bg-orange-600 hover:bg-orange-700 text-white rounded-lg text-xs font-bold flex items-center gap-1.5 shadow-xs transition-colors cursor-pointer shrink-0"
+          >
+            <Sun className="w-3.5 h-3.5" />
+            <span>Nuova Vacanza</span>
+          </button>
+
           {/* View Mode Toggle Switch (Mensile / Settimanale) */}
-          <div className="flex items-center p-0.5 rounded-lg bg-neutral-100 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700">
+          <div className="flex items-center p-0.5 rounded-lg bg-neutral-100 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 shrink-0">
             <button
               onClick={() => setViewMode('mese')}
               className={`px-3 py-1 rounded-md text-xs font-semibold flex items-center gap-1.5 transition-all ${
                 viewMode === 'mese'
-                  ? 'bg-white dark:bg-[#202020] text-blue-600 dark:text-blue-400 shadow-xs font-bold'
+                  ? 'bg-white dark:bg-[#202020] text-orange-600 dark:text-orange-400 shadow-xs font-bold'
                   : 'text-neutral-500 hover:text-neutral-800 dark:hover:text-neutral-200'
               }`}
             >
@@ -175,7 +206,7 @@ export const CalendarioSection = () => {
               onClick={() => setViewMode('settimana')}
               className={`px-3 py-1 rounded-md text-xs font-semibold flex items-center gap-1.5 transition-all ${
                 viewMode === 'settimana'
-                  ? 'bg-white dark:bg-[#202020] text-blue-600 dark:text-blue-400 shadow-xs font-bold'
+                  ? 'bg-white dark:bg-[#202020] text-orange-600 dark:text-orange-400 shadow-xs font-bold'
                   : 'text-neutral-500 hover:text-neutral-800 dark:hover:text-neutral-200'
               }`}
             >
@@ -185,19 +216,20 @@ export const CalendarioSection = () => {
           </div>
 
           {/* Category Filter Pills */}
-          <div className="flex items-center gap-1 overflow-x-auto py-1 scrollbar-none">
+          <div className="flex items-center gap-1 overflow-x-auto py-1 scrollbar-none justify-end">
             {[
               { id: 'tutti', label: 'Tutti' },
               { id: 'voti', label: 'Voti (Viola)' },
               { id: 'scadenze', label: 'Scadenze (Blu)' },
-              { id: 'economia', label: 'Economia (Verde/Rosso)' }
+              { id: 'economia', label: 'Economia (Verde/Rosso)' },
+              { id: 'vacanze', label: 'Vacanze (Arancione)' }
             ].map(cat => (
               <button
                 key={cat.id}
                 onClick={() => setSelectedCategory(cat.id)}
                 className={`px-2.5 py-1 rounded-md text-xs font-semibold shrink-0 transition-all ${
                   selectedCategory === cat.id
-                    ? 'bg-blue-100 text-blue-800 dark:bg-blue-950 dark:text-blue-300 border border-blue-300 dark:border-blue-800'
+                    ? 'bg-orange-100 text-orange-800 dark:bg-orange-950 dark:text-orange-300 border border-orange-300 dark:border-orange-800'
                     : 'bg-neutral-100 dark:bg-neutral-800 text-neutral-600 dark:text-neutral-400 hover:bg-neutral-200'
                 }`}
               >
@@ -261,34 +293,70 @@ export const CalendarioSection = () => {
                 const formattedDate = `${year}-${String(month + 1).padStart(2, '0')}-${String(dayNum).padStart(2, '0')}`;
                 const dayEvents = getEventsForDate(formattedDate);
                 const isToday = new Date().toISOString().split('T')[0] === formattedDate;
+                const holidayObj = holidays.find(h => h.date === formattedDate);
+                const hasHoliday = !!holidayObj;
+                const otherEvents = dayEvents.filter(ev => ev.type !== 'vacanza');
 
                 return (
                   <div 
                     key={dayNum} 
                     className={`min-h-24 p-1.5 rounded-xl border flex flex-col justify-between transition-all ${
-                      isToday 
-                        ? 'bg-blue-50/50 dark:bg-blue-950/20 border-blue-400 dark:border-blue-700' 
-                        : 'bg-white dark:bg-[#191919] border-neutral-200/80 dark:border-neutral-800'
+                      hasHoliday
+                        ? 'bg-orange-500 text-white border-orange-600 shadow-sm'
+                        : isToday 
+                          ? 'bg-orange-50/50 dark:bg-orange-950/20 border-orange-400 dark:border-orange-600' 
+                          : 'bg-white dark:bg-[#191919] border-neutral-200/80 dark:border-neutral-800'
                     }`}
                   >
-                    <div className="flex items-center justify-between">
-                      <span className={`text-xs font-extrabold ${isToday ? 'text-blue-600 dark:text-blue-400' : 'text-neutral-700 dark:text-neutral-300'}`}>
-                        {dayNum}
-                      </span>
-                      {dayEvents.length > 0 && (
-                        <span className="text-[10px] font-bold px-1.5 py-0.2 rounded-full bg-neutral-100 dark:bg-neutral-800 text-neutral-500">
-                          {dayEvents.length}
+                    <div className="flex items-start justify-between gap-1 overflow-hidden">
+                      <div className="flex items-center gap-1.5 min-w-0 flex-1">
+                        <span className={`text-xs font-extrabold shrink-0 ${
+                          hasHoliday 
+                            ? 'text-white drop-shadow-xs' 
+                            : isToday 
+                              ? 'text-orange-600 dark:text-orange-400' 
+                              : 'text-neutral-700 dark:text-neutral-300'
+                        }`}>
+                          {dayNum}
+                        </span>
+                        {hasHoliday && (
+                          <span 
+                            onClick={() => setSelectedEvent({
+                              id: 'h_' + holidayObj.id,
+                              type: 'vacanza',
+                              categoryName: 'Vacanza',
+                              title: holidayObj.name,
+                              subTitle: 'Giorno di vacanza',
+                              date: holidayObj.date,
+                              raw: holidayObj
+                            })}
+                            className="text-[11px] font-bold text-white leading-tight truncate cursor-pointer hover:underline"
+                            title={`${holidayObj.name} - Clicca per dettagli`}
+                          >
+                            {holidayObj.name}
+                          </span>
+                        )}
+                      </div>
+                      {otherEvents.length > 0 && (
+                        <span className={`text-[10px] font-bold px-1.5 py-0.2 rounded-full shrink-0 ${
+                          hasHoliday
+                            ? 'bg-black/20 text-white border border-white/20'
+                            : isToday 
+                              ? 'bg-orange-100 dark:bg-orange-950 text-orange-700 dark:text-orange-300' 
+                              : 'bg-neutral-100 dark:bg-neutral-800 text-neutral-500'
+                        }`}>
+                          {otherEvents.length}
                         </span>
                       )}
                     </div>
 
-                    {/* Day events pills */}
+                    {/* Day events pills (transactions, etc.) */}
                     <div className="space-y-1 mt-1 overflow-y-auto max-h-20 scrollbar-none">
-                      {dayEvents.map(ev => (
+                      {otherEvents.map(ev => (
                         <div 
                           key={ev.id}
                           onClick={() => setSelectedEvent(ev)}
-                          className={`px-1.5 py-1 rounded-md text-[10px] font-bold cursor-pointer transition-transform hover:scale-[1.02] ${ev.badgeBg}`}
+                          className={`px-1.5 py-1 rounded-md text-[10px] font-bold cursor-pointer transition-transform hover:scale-[1.02] shadow-xs ${ev.badgeBg}`}
                           title={`${ev.title} - Clicca per i dettagli`}
                         >
                           <div className="truncate">{ev.title}</div>
@@ -309,41 +377,77 @@ export const CalendarioSection = () => {
               const formattedDate = d.toISOString().split('T')[0];
               const dayEvents = getEventsForDate(formattedDate);
               const isToday = new Date().toISOString().split('T')[0] === formattedDate;
+              const holidayObj = holidays.find(h => h.date === formattedDate);
+              const hasHoliday = !!holidayObj;
+              const otherEvents = dayEvents.filter(ev => ev.type !== 'vacanza');
 
               return (
                 <div 
-                  key={formattedDate}
+                  key={formattedDate} 
                   className={`min-h-[220px] p-3 rounded-xl border flex flex-col justify-between space-y-2 transition-all ${
-                    isToday
-                      ? 'bg-blue-50/50 dark:bg-blue-950/20 border-blue-400 dark:border-blue-700 shadow-xs'
-                      : 'bg-white dark:bg-[#191919] border-neutral-200/80 dark:border-neutral-800'
+                    hasHoliday
+                      ? 'bg-orange-500 text-white border-orange-600 shadow-sm'
+                      : isToday
+                        ? 'bg-orange-50/50 dark:bg-orange-950/20 border-orange-400 dark:border-orange-600 shadow-xs'
+                        : 'bg-white dark:bg-[#191919] border-neutral-200/80 dark:border-neutral-800'
                   }`}
                 >
                   {/* Day Header */}
-                  <div className="pb-2 border-b border-neutral-100 dark:border-neutral-800 flex items-center justify-between">
-                    <div>
-                      <div className="text-[11px] font-bold text-neutral-400 uppercase tracking-wider">
+                  <div className={`pb-2 border-b flex items-center justify-between ${hasHoliday ? 'border-white/20' : 'border-neutral-100 dark:border-neutral-800'}`}>
+                    <div className="min-w-0 flex-1 pr-1">
+                      <div className={`text-[11px] font-bold uppercase tracking-wider ${hasHoliday ? 'text-white/80' : 'text-neutral-400'}`}>
                         {weekdayNames[index]}
                       </div>
-                      <div className={`text-base font-extrabold font-mono ${isToday ? 'text-blue-600 dark:text-blue-400' : 'text-neutral-800 dark:text-neutral-200'}`}>
-                        {d.getDate()} {monthNames[d.getMonth()].slice(0, 3)}
+                      <div className="flex items-baseline gap-1.5 flex-wrap">
+                        <span className={`text-base font-extrabold font-mono shrink-0 ${
+                          hasHoliday 
+                            ? 'text-white drop-shadow-xs' 
+                            : isToday 
+                              ? 'text-orange-600 dark:text-orange-400' 
+                              : 'text-neutral-800 dark:text-neutral-200'
+                        }`}>
+                          {d.getDate()} {monthNames[d.getMonth()].slice(0, 3)}
+                        </span>
+                        {hasHoliday && (
+                          <span 
+                            onClick={() => setSelectedEvent({
+                              id: 'h_' + holidayObj.id,
+                              type: 'vacanza',
+                              categoryName: 'Vacanza',
+                              title: holidayObj.name,
+                              subTitle: 'Giorno di vacanza',
+                              date: holidayObj.date,
+                              raw: holidayObj
+                            })}
+                            className="text-xs font-bold text-white truncate cursor-pointer hover:underline"
+                            title={`${holidayObj.name} - Clicca per dettagli`}
+                          >
+                            {holidayObj.name}
+                          </span>
+                        )}
                       </div>
                     </div>
-                    {dayEvents.length > 0 && (
-                      <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-blue-100 text-blue-800 dark:bg-blue-950 dark:text-blue-300">
-                        {dayEvents.length}
+                    {otherEvents.length > 0 && (
+                      <span className={`text-xs font-bold px-2 py-0.5 rounded-full shrink-0 ${
+                        hasHoliday
+                          ? 'bg-black/20 text-white border border-white/20'
+                          : isToday
+                            ? 'bg-orange-100 text-orange-800 dark:bg-orange-950 dark:text-orange-300'
+                            : 'bg-neutral-100 text-neutral-700 dark:bg-neutral-800 dark:text-neutral-300'
+                      }`}>
+                        {otherEvents.length}
                       </span>
                     )}
                   </div>
 
                   {/* Day Events Stack for Weekly View */}
                   <div className="flex-1 space-y-1.5 overflow-y-auto max-h-[260px] scrollbar-none py-1">
-                    {dayEvents.length > 0 ? (
-                      dayEvents.map(ev => (
+                    {otherEvents.length > 0 ? (
+                      otherEvents.map(ev => (
                         <div
                           key={ev.id}
                           onClick={() => setSelectedEvent(ev)}
-                          className={`p-2 rounded-lg text-xs font-semibold cursor-pointer transition-transform hover:scale-[1.02] space-y-0.5 ${ev.badgeBg}`}
+                          className={`p-2 rounded-lg text-xs font-semibold cursor-pointer transition-transform hover:scale-[1.02] shadow-xs space-y-0.5 ${ev.badgeBg}`}
                         >
                           <div className="font-bold truncate">{ev.title}</div>
                           {ev.subTitle && (
@@ -352,7 +456,7 @@ export const CalendarioSection = () => {
                         </div>
                       ))
                     ) : (
-                      <div className="h-full flex items-center justify-center text-[11px] text-neutral-400 italic">
+                      <div className={`h-full flex items-center justify-center text-[11px] italic ${hasHoliday ? 'text-white/70' : 'text-neutral-400'}`}>
                         Nessun evento
                       </div>
                     )}
@@ -382,6 +486,7 @@ export const CalendarioSection = () => {
                 {selectedEvent.type === 'voto' && <Award className="w-5 h-5 text-purple-500" />}
                 {selectedEvent.type === 'scadenza' && <Clock className="w-5 h-5 text-blue-500" />}
                 {selectedEvent.type === 'transazione' && <Wallet className="w-5 h-5 text-emerald-500" />}
+                {selectedEvent.type === 'vacanza' && <Sun className="w-5 h-5 text-orange-500" />}
                 <h3 className="text-sm font-bold text-neutral-900 dark:text-white">
                   Dettaglio {selectedEvent.categoryName}
                 </h3>
@@ -454,7 +559,21 @@ export const CalendarioSection = () => {
             </div>
 
             {/* Footer */}
-            <div className="flex justify-end pt-2 border-t border-neutral-200 dark:border-neutral-800">
+            <div className="flex items-center justify-between pt-2 border-t border-neutral-200 dark:border-neutral-800">
+              {selectedEvent.type === 'vacanza' ? (
+                <button
+                  type="button"
+                  onClick={() => {
+                    deleteHoliday(selectedEvent.raw.id);
+                    setSelectedEvent(null);
+                  }}
+                  className="px-3 py-1.5 bg-red-50 hover:bg-red-100 dark:bg-red-950/40 dark:hover:bg-red-900/60 text-red-600 dark:text-red-400 text-xs font-semibold rounded-lg flex items-center gap-1.5 transition-colors cursor-pointer"
+                >
+                  <Trash2 className="w-3.5 h-3.5" />
+                  <span>Elimina Vacanza</span>
+                </button>
+              ) : <div />}
+
               <button
                 onClick={() => setSelectedEvent(null)}
                 className="px-4 py-1.5 bg-neutral-900 dark:bg-white text-white dark:text-neutral-900 text-xs font-semibold rounded-lg hover:bg-neutral-800 dark:hover:bg-neutral-100 transition-colors"
@@ -465,6 +584,13 @@ export const CalendarioSection = () => {
           </div>
         </div>
       )}
+
+      {/* Modal Aggiungi Vacanza */}
+      <AddHolidayModal
+        isOpen={isAddHolidayModalOpen}
+        onClose={() => setIsAddHolidayModalOpen(false)}
+        onAddHoliday={addHoliday}
+      />
     </div>
   );
 };

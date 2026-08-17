@@ -1,7 +1,7 @@
 {
   "appName": "Personal Workspace",
   "version": "1.0",
-  "savedAt": "2026-08-17T09:09:31.294Z",
+  "savedAt": "2026-08-17T10:30:46.887Z",
   "userName": "Utente",
   "initialBaseBalance": 0,
   "baseBalance": 0,
@@ -62,16 +62,9 @@
   ],
   "customPages": [],
   "quickNotes": "Benvenuto!",
-  "economyCategories": [
-    "ww"
-  ],
+  "economyCategories": [],
   "directLinks": [],
-  "subjects": [
-    "e",
-    "ew",
-    "q",
-    "w",
-    "wd"
-  ],
-  "timetable": {}
+  "subjects": [],
+  "timetable": {},
+  "holidays": []
 }

@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { X, ArrowRight, ArrowLeft, Check, Calendar as CalendarIcon } from 'lucide-react';
+import { X, ArrowRight, ArrowLeft, Check, Calendar as CalendarIcon, AlertTriangle } from 'lucide-react';
 import { useWorkspace } from '../context/WorkspaceContext';
 import { AppleDatePicker } from './AppleDatePicker';
 
@@ -17,7 +17,7 @@ const MONTHS = [
 ];
 
 export const AddGradeModal = ({ isOpen, onClose, subjects, onAddGrade }) => {
-  const { isSidebarOpen } = useWorkspace();
+  const { isSidebarOpen, isHoliday } = useWorkspace();
   const [step, setStep] = useState(1); // 1: Materia, 2: Oggetto, 3: Descrizione, 4: Data, 5: Voto & Opzioni
 
   // Step 1: Materia
@@ -76,9 +76,21 @@ export const AddGradeModal = ({ isOpen, onClose, subjects, onAddGrade }) => {
     }
   };
 
+  const isSunday = (dateStr) => {
+    if (!dateStr) return false;
+    const parts = dateStr.split('-').map(Number);
+    if (parts.length !== 3) return false;
+    const d = new Date(parts[0], parts[1] - 1, parts[2]);
+    return d.getDay() === 0;
+  };
+
+  const holiday = isHoliday ? isHoliday(selectedDate) : null;
+  const sunday = isSunday(selectedDate);
+  const isBlockedDate = !!holiday || sunday;
+
   const handleSubmit = (e) => {
     e.preventDefault();
-    if (!subject) return;
+    if (!subject || isBlockedDate) return;
 
     const numericVal = getNumericGrade();
     const displayStr = getDisplayGradeString();
@@ -232,6 +244,30 @@ export const AddGradeModal = ({ isOpen, onClose, subjects, onAddGrade }) => {
                 onChange={setSelectedDate}
                 themeColor="purple"
               />
+
+              {holiday && (
+                <div className="p-3 bg-orange-50 dark:bg-orange-950/40 border border-orange-300 dark:border-orange-800 rounded-xl text-xs space-y-1 animate-fade-in">
+                  <div className="flex items-center gap-1.5 font-bold text-orange-800 dark:text-orange-300">
+                    <AlertTriangle className="w-4 h-4 text-orange-600 dark:text-orange-400 shrink-0" />
+                    <span>Giorno di Vacanza: {holiday.name}</span>
+                  </div>
+                  <p className="text-[11px] text-orange-700 dark:text-orange-300/80">
+                    Non è possibile inserire voti durante i giorni di vacanza. Seleziona una data diversa per continuare.
+                  </p>
+                </div>
+              )}
+
+              {!holiday && sunday && (
+                <div className="p-3 bg-red-50 dark:bg-red-950/40 border border-red-300 dark:border-red-800 rounded-xl text-xs space-y-1 animate-fade-in">
+                  <div className="flex items-center gap-1.5 font-bold text-red-800 dark:text-red-300">
+                    <AlertTriangle className="w-4 h-4 text-red-600 dark:text-red-400 shrink-0" />
+                    <span>Domenica (Giorno Festivo)</span>
+                  </div>
+                  <p className="text-[11px] text-red-700 dark:text-red-300/80">
+                    Non è possibile inserire voti di domenica. Seleziona un giorno dal lunedì al sabato per continuare.
+                  </p>
+                </div>
+              )}
             </div>
           )}
 
@@ -351,7 +387,7 @@ export const AddGradeModal = ({ isOpen, onClose, subjects, onAddGrade }) => {
           {step < totalSteps ? (
             <button
               onClick={() => setStep(step + 1)}
-              disabled={step === 1 && !subject}
+              disabled={(step === 1 && !subject) || (step === 4 && isBlockedDate)}
               className="px-4 py-1.5 text-xs font-semibold bg-purple-600 text-white rounded-lg hover:bg-purple-700 disabled:opacity-50 flex items-center gap-1 transition-colors"
             >
               <span>Avanti</span>

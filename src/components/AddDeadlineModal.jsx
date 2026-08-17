@@ -1,10 +1,10 @@
 import React, { useState } from 'react';
-import { X, ArrowRight, ArrowLeft, Check, Calendar as CalendarIcon } from 'lucide-react';
+import { X, ArrowRight, ArrowLeft, Check, Calendar as CalendarIcon, AlertTriangle } from 'lucide-react';
 import { useWorkspace } from '../context/WorkspaceContext';
 import { AppleDatePicker } from './AppleDatePicker';
 
 export const AddDeadlineModal = ({ isOpen, onClose, subjects, onAddDeadline }) => {
-  const { isSidebarOpen } = useWorkspace();
+  const { isSidebarOpen, isHoliday } = useWorkspace();
   const [step, setStep] = useState(1); // 1: Materia, 2: Oggetto, 3: Descrizione, 4: Data Scadenza
 
   const [subject, setSubject] = useState('');
@@ -19,9 +19,11 @@ export const AddDeadlineModal = ({ isOpen, onClose, subjects, onAddDeadline }) =
     setStep(2);
   };
 
+  const holiday = isHoliday ? isHoliday(date) : null;
+
   const handleSubmit = (e) => {
     e.preventDefault();
-    if (!subject || !title) return;
+    if (!subject || !title || (isHoliday && isHoliday(date))) return;
 
     onAddDeadline({
       subject,
@@ -156,6 +158,18 @@ export const AddDeadlineModal = ({ isOpen, onClose, subjects, onAddDeadline }) =
                 onChange={setDate}
                 themeColor="purple"
               />
+
+              {holiday && (
+                <div className="p-3 bg-orange-50 dark:bg-orange-950/40 border border-orange-300 dark:border-orange-800 rounded-xl text-xs space-y-1 animate-fade-in">
+                  <div className="flex items-center gap-1.5 font-bold text-orange-800 dark:text-orange-300">
+                    <AlertTriangle className="w-4 h-4 text-orange-600 dark:text-orange-400 shrink-0" />
+                    <span>Giorno di Vacanza: {holiday.name}</span>
+                  </div>
+                  <p className="text-[11px] text-orange-700 dark:text-orange-300/80">
+                    Non è possibile inserire scadenze durante i giorni di vacanza. Seleziona una data diversa per continuare.
+                  </p>
+                </div>
+              )}
             </div>
           )}
         </div>
@@ -184,7 +198,8 @@ export const AddDeadlineModal = ({ isOpen, onClose, subjects, onAddDeadline }) =
           ) : (
             <button
               onClick={handleSubmit}
-              className="px-4 py-1.5 text-xs font-semibold bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 flex items-center gap-1 transition-colors"
+              disabled={!!holiday}
+              className="px-4 py-1.5 text-xs font-semibold bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 disabled:opacity-50 flex items-center gap-1 transition-colors"
             >
               <Check className="w-3.5 h-3.5" />
               <span>Salva Scadenza</span>
