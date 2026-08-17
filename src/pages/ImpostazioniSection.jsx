@@ -16,7 +16,11 @@ import {
   Trash2, 
   Edit2, 
   Check, 
-  X 
+  X,
+  Download,
+  Upload,
+  FileText,
+  AlertTriangle
 } from 'lucide-react';
 
 export const ImpostazioniSection = () => {
@@ -34,7 +38,9 @@ export const ImpostazioniSection = () => {
     updateSubject,
     saveProjectFile,
     saveStatus,
-    lastSaveTime
+    lastSaveTime,
+    exportWorkspaceData,
+    importWorkspaceData
   } = useWorkspace();
 
   const [inputName, setInputName] = useState(userName || 'Riccardo');
@@ -45,6 +51,13 @@ export const ImpostazioniSection = () => {
   const [newSubjectInput, setNewSubjectInput] = useState('');
   const [editingSubject, setEditingSubject] = useState(null); // { oldName: '', newName: '' }
   const [deleteSubjectState, setDeleteSubjectState] = useState({ open: false, subjectName: null, mousePos: null });
+
+  // Import state
+  const [importStatus, setImportStatus] = useState(null); // null | 'success' | 'error'
+  const [importError, setImportError] = useState('');
+  const [pendingImportData, setPendingImportData] = useState(null); // holds parsed JSON awaiting confirmation
+  const [showImportConfirm, setShowImportConfirm] = useState(false);
+  const importFileRef = React.useRef(null);
 
   // Calculated totals for preview
   const totalEntrate = transactions
@@ -89,6 +102,45 @@ export const ImpostazioniSection = () => {
     if (deleteSubjectState.subjectName) {
       deleteSubject(deleteSubjectState.subjectName);
       setDeleteSubjectState({ open: false, subjectName: null, mousePos: null });
+    }
+  };
+
+  // Import handlers
+  const handleImportFile = (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      try {
+        const parsed = JSON.parse(ev.target.result);
+        setPendingImportData(parsed);
+        setShowImportConfirm(true);
+      } catch {
+        setImportStatus('error');
+        setImportError('Il file selezionato non è un JSON valido.');
+        setTimeout(() => setImportStatus(null), 4000);
+      }
+    };
+    reader.readAsText(file);
+    // Reset the input so the same file can be re-selected
+    e.target.value = '';
+  };
+
+  const confirmImport = async () => {
+    if (!pendingImportData) return;
+    const result = importWorkspaceData(pendingImportData);
+    setShowImportConfirm(false);
+    setPendingImportData(null);
+    if (result.success) {
+      setImportStatus('success');
+      // Sync the local form inputs with newly imported values
+      if (typeof pendingImportData?.userName === 'string') setInputName(pendingImportData.userName);
+      if (typeof pendingImportData?.initialBaseBalance === 'number') setInputBalance(pendingImportData.initialBaseBalance.toString());
+      setTimeout(() => setImportStatus(null), 4000);
+    } else {
+      setImportStatus('error');
+      setImportError(result.error || 'Errore sconosciuto durante l\'importazione.');
+      setTimeout(() => setImportStatus(null), 4000);
     }
   };
 
@@ -368,6 +420,68 @@ export const ImpostazioniSection = () => {
               </button>
             </div>
           </div>
+
+          {/* Card 5: Esporta / Importa Dati */}
+          <div className="notion-card p-5 space-y-4 bg-white dark:bg-[#202020] border border-neutral-200 dark:border-neutral-800 rounded-xl shadow-xs">
+            <div className="flex items-center gap-2 border-b border-neutral-100 dark:border-neutral-800 pb-2.5">
+              <FileText className="w-4 h-4 text-blue-500" />
+              <h2 className="text-sm font-bold text-neutral-900 dark:text-white">
+                Esporta / Importa Dati
+              </h2>
+            </div>
+
+            <p className="text-[11px] text-neutral-400 leading-relaxed">
+              Scarica un backup completo dei tuoi dati in formato <span className="font-semibold text-neutral-600 dark:text-neutral-300">.json</span>, oppure importa un backup esistente per ripristinare materie, voti, pagine, saldo, categorie, transazioni, scadenze, collegamenti e orario.
+            </p>
+
+            {/* Toast feedback */}
+            {importStatus === 'success' && (
+              <div className="px-3 py-2 bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-300 text-xs font-bold rounded-lg border border-emerald-300 dark:border-emerald-800 flex items-center gap-1.5 animate-fade-in">
+                <CheckCircle2 className="w-4 h-4 text-emerald-500" />
+                <span>Dati importati con successo!</span>
+              </div>
+            )}
+            {importStatus === 'error' && (
+              <div className="px-3 py-2 bg-red-100 dark:bg-red-950 text-red-800 dark:text-red-300 text-xs font-bold rounded-lg border border-red-300 dark:border-red-800 flex items-center gap-1.5 animate-fade-in">
+                <AlertTriangle className="w-4 h-4 text-red-500" />
+                <span>{importError}</span>
+              </div>
+            )}
+
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5">
+              {/* Export Button */}
+              <button
+                type="button"
+                onClick={exportWorkspaceData}
+                className="flex-1 px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-bold flex items-center justify-center gap-2 transition-colors shadow-xs cursor-pointer"
+              >
+                <Download className="w-4 h-4" />
+                <span>Esporta Backup (.json)</span>
+              </button>
+
+              {/* Import Button */}
+              <input
+                ref={importFileRef}
+                type="file"
+                accept=".json,application/json"
+                onChange={handleImportFile}
+                className="hidden"
+              />
+              <button
+                type="button"
+                onClick={() => importFileRef.current?.click()}
+                className="flex-1 px-4 py-2.5 bg-neutral-100 hover:bg-neutral-200 dark:bg-neutral-800 dark:hover:bg-neutral-700 text-neutral-800 dark:text-neutral-200 rounded-lg text-xs font-bold flex items-center justify-center gap-2 transition-colors border border-neutral-300/80 dark:border-neutral-700 cursor-pointer"
+              >
+                <Upload className="w-4 h-4" />
+                <span>Importa Backup (.json)</span>
+              </button>
+            </div>
+
+            <div className="text-[10px] text-neutral-400 leading-relaxed space-y-0.5">
+              <div>📦 <strong>Esporta</strong> — Scarica: materie, voti, pagine personali, saldo, categorie, transazioni (ultimi 90gg), scadenze in sospeso, collegamenti diretti, orario lezioni.</div>
+              <div>📥 <strong>Importa</strong> — Carica un file <code>.json</code> precedentemente esportato per ripristinare tutti i dati.</div>
+            </div>
+          </div>
         </form>
 
         {/* Live Preview Panel */}
@@ -429,6 +543,55 @@ export const ImpostazioniSection = () => {
         mousePos={deleteSubjectState.mousePos}
         itemTitle={deleteSubjectState.subjectName ? `la materia "${deleteSubjectState.subjectName}"` : ''}
       />
+      {/* Import confirmation modal */}
+      {showImportConfirm && (
+        <div 
+          className="fixed inset-0 z-50 bg-black/50 backdrop-blur-xs flex items-center justify-center p-4 animate-fade-in cursor-pointer"
+          onClick={() => { setShowImportConfirm(false); setPendingImportData(null); }}
+        >
+          <div 
+            className="bg-white dark:bg-[#202020] w-full max-w-sm rounded-2xl border border-neutral-200 dark:border-neutral-800 shadow-2xl overflow-hidden cursor-default p-5 space-y-4 animate-fade-in"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center gap-2.5">
+              <div className="p-2 rounded-full bg-amber-100 dark:bg-amber-950">
+                <AlertTriangle className="w-5 h-5 text-amber-600 dark:text-amber-400" />
+              </div>
+              <div>
+                <h3 className="text-sm font-bold text-neutral-900 dark:text-white">Conferma Importazione</h3>
+                <p className="text-[11px] text-neutral-500 dark:text-neutral-400">I dati attuali verranno sovrascritti</p>
+              </div>
+            </div>
+
+            <p className="text-xs text-neutral-600 dark:text-neutral-300 leading-relaxed">
+              Stai per importare un backup che sovrascriverà le materie, i voti, le pagine, il saldo, le categorie, le transazioni, le scadenze, i collegamenti e l'orario attualmente salvati. Vuoi continuare?
+            </p>
+
+            {pendingImportData?._meta?.exportedAt && (
+              <div className="text-[10px] font-mono text-neutral-400 bg-neutral-50 dark:bg-neutral-900 p-2 rounded-lg border border-neutral-200 dark:border-neutral-800">
+                Backup del: {new Date(pendingImportData._meta.exportedAt).toLocaleString('it-IT')}
+              </div>
+            )}
+
+            <div className="flex items-center gap-2 pt-1">
+              <button
+                type="button"
+                onClick={() => { setShowImportConfirm(false); setPendingImportData(null); }}
+                className="flex-1 px-4 py-2 text-xs font-semibold text-neutral-600 dark:text-neutral-400 bg-neutral-100 dark:bg-neutral-800 hover:bg-neutral-200 dark:hover:bg-neutral-700 rounded-lg transition-colors cursor-pointer"
+              >
+                Annulla
+              </button>
+              <button
+                type="button"
+                onClick={confirmImport}
+                className="flex-1 px-4 py-2 text-xs font-bold text-white bg-amber-600 hover:bg-amber-700 rounded-lg transition-colors shadow-xs cursor-pointer"
+              >
+                Importa e Sovrascrivi
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

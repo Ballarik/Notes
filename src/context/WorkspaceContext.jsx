@@ -430,6 +430,80 @@ export const WorkspaceProvider = ({ children }) => {
     if (pageId) setActivePageId(pageId);
   };
 
+  // --- EXPORT / IMPORT ---
+  const exportWorkspaceData = () => {
+    const now = new Date();
+    const ninetyDaysAgo = new Date(now);
+    ninetyDaysAgo.setDate(ninetyDaysAgo.getDate() - 90);
+
+    const recentTransactions = transactions.filter(t => {
+      const d = new Date(t.date);
+      return d >= ninetyDaysAgo && d <= now;
+    });
+
+    const pendingSchoolItems = schoolItems.filter(i => i.status !== 'completato');
+
+    const exportPayload = {
+      _meta: {
+        appName: 'Personal Workspace',
+        version: '1.0',
+        exportedAt: now.toISOString(),
+      },
+      subjects,
+      grades,
+      customPages,
+      initialBaseBalance,
+      economyCategories,
+      recentTransactions,
+      pendingSchoolItems,
+      directLinks,
+      timetable,
+      userName,
+    };
+
+    const blob = new Blob([JSON.stringify(exportPayload, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    const dateStr = now.toISOString().slice(0, 10);
+    a.href = url;
+    a.download = `workspace_backup_${dateStr}.json`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  };
+
+  const importWorkspaceData = (jsonData) => {
+    try {
+      const data = typeof jsonData === 'string' ? JSON.parse(jsonData) : jsonData;
+
+      if (Array.isArray(data.subjects)) setSubjects(data.subjects);
+      if (Array.isArray(data.grades)) setGrades(data.grades);
+      if (Array.isArray(data.customPages)) setCustomPages(data.customPages);
+      if (typeof data.initialBaseBalance === 'number') setInitialBaseBalanceState(data.initialBaseBalance);
+      if (Array.isArray(data.economyCategories)) setEconomyCategories(data.economyCategories);
+      if (Array.isArray(data.recentTransactions)) setTransactions(data.recentTransactions);
+      if (Array.isArray(data.pendingSchoolItems)) setSchoolItems(prev => {
+        const importedIds = new Set(data.pendingSchoolItems.map(i => i.id));
+        const existing = prev.filter(i => !importedIds.has(i.id));
+        return [...data.pendingSchoolItems, ...existing];
+      });
+      if (Array.isArray(data.directLinks)) setDirectLinks(data.directLinks);
+      if (data.timetable && typeof data.timetable === 'object') setTimetable(data.timetable);
+      if (typeof data.userName === 'string') {
+        setUserNameState(data.userName);
+        localStorage.setItem('notion_userName', data.userName);
+      }
+      if (typeof data.initialBaseBalance === 'number') {
+        localStorage.setItem('notion_baseBalance', data.initialBaseBalance.toString());
+      }
+
+      return { success: true };
+    } catch (err) {
+      return { success: false, error: err.message };
+    }
+  };
+
   return (
     <WorkspaceContext.Provider value={{
       activeTab,
@@ -481,7 +555,9 @@ export const WorkspaceProvider = ({ children }) => {
       saveProjectFile,
       saveStatus,
       lastSaveTime,
-      navigateTo
+      navigateTo,
+      exportWorkspaceData,
+      importWorkspaceData
     }}>
       {children}
     </WorkspaceContext.Provider>

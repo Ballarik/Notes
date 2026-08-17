@@ -27,20 +27,6 @@ import {
   CalendarClock
 } from 'lucide-react';
 
-const INITIAL_SUBJECTS = [
-  "Chimica e biologia",
-  "Disegno e storia dell'arte",
-  "Educazione civica",
-  "Educazione fisica",
-  "Filosofia",
-  "Fisica",
-  "Informatica",
-  "Inglese",
-  "Italiano",
-  "Matematica",
-  "Storia",
-  "Tedesco"
-];
 
 export const ScuolaSection = () => {
   const { 
@@ -131,7 +117,7 @@ export const ScuolaSection = () => {
     };
   };
 
-  const sortedSubjectData = INITIAL_SUBJECTS.map(subj => getSubjectStats(subj)).sort((a, b) => {
+  const sortedSubjectData = (subjects || []).map(subj => getSubjectStats(subj)).sort((a, b) => {
     switch (sortBy) {
       case 'name_asc':
         return a.subject.localeCompare(b.subject);
