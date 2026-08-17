@@ -28,6 +28,21 @@ const initialAssets = [
   { id: 'a3', name: 'Bicicletta', description: 'Bici da città per spostamenti', value: 250.00, dateAdded: '2026-08-10' }
 ];
 
+const initialTopUps = [
+  {
+    id: 'r1',
+    name: 'SIM Telefono (Iliad)',
+    currentBalance: 15.98,
+    monthlyCost: 7.99,
+    renewalDay: 24,
+    lastDeductionMonth: '2026-07',
+    history: [
+      { id: 'h1', date: '2026-07-24', amount: -7.99, type: 'rinnovo', note: 'Rinnovo mensile automatico' },
+      { id: 'h2', date: '2026-08-01', amount: 15.00, type: 'ricarica', note: 'Ricarica conto' }
+    ]
+  }
+];
+
 const initialCalendarEvents = [
   { id: 'e1', date: '2026-08-20', title: 'Consegna Progetto Notion', category: 'scuola', time: '15:00', notes: 'Completare la dashboard a 2 colonne' },
   { id: 'e2', date: '2026-08-25', title: 'Pianificazione Budget Mensile', category: 'economia', time: '18:00', notes: 'Revisione entrate e uscite' },
@@ -99,6 +114,11 @@ export const WorkspaceProvider = ({ children }) => {
   const [assets, setAssets] = useState(() => {
     const saved = localStorage.getItem('notion_assets');
     return saved ? JSON.parse(saved) : initialAssets;
+  });
+
+  const [topUps, setTopUps] = useState(() => {
+    const saved = localStorage.getItem('notion_topUps');
+    return saved ? JSON.parse(saved) : initialTopUps;
   });
 
   const [homeStats, setHomeStats] = useState(() => {
@@ -204,6 +224,7 @@ export const WorkspaceProvider = ({ children }) => {
           if (Array.isArray(data.subjects)) setSubjects(data.subjects);
           if (Array.isArray(data.holidays)) setHolidays(data.holidays);
           if (Array.isArray(data.assets)) setAssets(data.assets);
+          if (Array.isArray(data.topUps)) setTopUps(data.topUps);
           if (data.timetable && typeof data.timetable === 'object') setTimetable(data.timetable);
           if (typeof data.userName === 'string') setUserNameState(data.userName);
           if (typeof data.initialBaseBalance === 'number') setInitialBaseBalanceState(data.initialBaseBalance);
@@ -278,6 +299,47 @@ export const WorkspaceProvider = ({ children }) => {
     localStorage.setItem('notion_assets', JSON.stringify(assets));
   }, [assets]);
 
+  useEffect(() => {
+    localStorage.setItem('notion_topUps', JSON.stringify(topUps));
+  }, [topUps]);
+
+  // Check and process due monthly renewals on load
+  useEffect(() => {
+    const now = new Date();
+    const currentYear = now.getFullYear();
+    const currentMonth = now.getMonth() + 1;
+    const currentDay = now.getDate();
+    const currentCycle = `${currentYear}-${String(currentMonth).padStart(2, '0')}`;
+
+    setTopUps(prev => {
+      let hasChanged = false;
+      const updated = prev.map(item => {
+        const renewalDay = parseInt(item.renewalDay, 10) || 1;
+        if (currentDay >= renewalDay && item.lastDeductionMonth !== currentCycle) {
+          hasChanged = true;
+          const cost = parseFloat(item.monthlyCost) || 0;
+          const newBalance = Math.round(((parseFloat(item.currentBalance) || 0) - cost) * 100) / 100;
+          const renewalDateStr = `${currentYear}-${String(currentMonth).padStart(2, '0')}-${String(Math.min(currentDay, renewalDay)).padStart(2, '0')}`;
+          const historyEntry = {
+            id: 'ren_' + Date.now() + '_' + Math.random().toString(36).substring(2, 6),
+            date: renewalDateStr,
+            amount: -cost,
+            type: 'rinnovo',
+            note: `Rinnovo mensile automatico (-€${cost.toFixed(2)})`
+          };
+          return {
+            ...item,
+            currentBalance: newBalance,
+            lastDeductionMonth: currentCycle,
+            history: [historyEntry, ...(item.history || [])]
+          };
+        }
+        return item;
+      });
+      return hasChanged ? updated : prev;
+    });
+  }, []);
+
   // Direct Save to Project Directory File (/project_data/workspace_data.json)
   const [saveStatus, setSaveStatus] = useState('saved'); // 'saved' | 'saving'
   const [lastSaveTime, setLastSaveTime] = useState(() => new Date().toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' }));
@@ -303,7 +365,8 @@ export const WorkspaceProvider = ({ children }) => {
       subjects,
       timetable,
       holidays,
-      assets
+      assets,
+      topUps
     };
 
     try {
@@ -330,7 +393,7 @@ export const WorkspaceProvider = ({ children }) => {
       saveProjectFile();
     }, 1000);
     return () => clearTimeout(timer);
-  }, [transactions, schoolItems, grades, calendarEvents, customPages, quickNotes, economyCategories, directLinks, userName, initialBaseBalance, subjects, timetable, holidays, assets]);
+  }, [transactions, schoolItems, grades, calendarEvents, customPages, quickNotes, economyCategories, directLinks, userName, initialBaseBalance, subjects, timetable, holidays, assets, topUps]);
 
   // Global Handlers
   const updateTimetableCell = (dayKey, hourNum, subjectName) => {
@@ -447,6 +510,72 @@ export const WorkspaceProvider = ({ children }) => {
     setAssets(prev => prev.filter(a => a.id !== id));
   };
 
+  const addTopUp = (newTopUp) => {
+    const now = new Date();
+    const currentYear = now.getFullYear();
+    const currentMonth = now.getMonth() + 1;
+    const currentCycle = `${currentYear}-${String(currentMonth).padStart(2, '0')}`;
+    const renewalDay = parseInt(newTopUp.renewalDay, 10) || 1;
+    const isPastRenewal = now.getDate() >= renewalDay;
+    const lastMonthDate = new Date(currentYear, currentMonth - 2, 1);
+    const prevCycle = `${lastMonthDate.getFullYear()}-${String(lastMonthDate.getMonth() + 1).padStart(2, '0')}`;
+
+    const item = {
+      id: Date.now().toString(),
+      name: newTopUp.name.trim(),
+      currentBalance: parseFloat(newTopUp.currentBalance) || 0,
+      monthlyCost: parseFloat(newTopUp.monthlyCost) || 0,
+      renewalDay: renewalDay,
+      lastDeductionMonth: isPastRenewal ? currentCycle : prevCycle,
+      history: [
+        {
+          id: 'init_' + Date.now(),
+          date: now.toISOString().split('T')[0],
+          amount: parseFloat(newTopUp.currentBalance) || 0,
+          type: 'saldo_iniziale',
+          note: 'Impostazione saldo iniziale'
+        }
+      ]
+    };
+    setTopUps(prev => [item, ...prev]);
+  };
+
+  const updateTopUp = (id, updatedFields) => {
+    setTopUps(prev => prev.map(t => t.id === id ? {
+      ...t,
+      ...updatedFields,
+      currentBalance: updatedFields.currentBalance !== undefined ? (parseFloat(updatedFields.currentBalance) || 0) : t.currentBalance,
+      monthlyCost: updatedFields.monthlyCost !== undefined ? (parseFloat(updatedFields.monthlyCost) || 0) : t.monthlyCost,
+      renewalDay: updatedFields.renewalDay !== undefined ? (parseInt(updatedFields.renewalDay, 10) || 1) : t.renewalDay
+    } : t));
+  };
+
+  const deleteTopUp = (id) => {
+    setTopUps(prev => prev.filter(t => t.id !== id));
+  };
+
+  const rechargeTopUp = (id, amount, note = 'Ricarica manuale') => {
+    const numAmount = parseFloat(amount) || 0;
+    if (numAmount <= 0) return;
+    const now = new Date();
+    setTopUps(prev => prev.map(t => {
+      if (t.id !== id) return t;
+      const newBal = Math.round(((parseFloat(t.currentBalance) || 0) + numAmount) * 100) / 100;
+      const historyEntry = {
+        id: 'rec_' + Date.now(),
+        date: now.toISOString().split('T')[0],
+        amount: numAmount,
+        type: 'ricarica',
+        note: note || 'Ricarica conto'
+      };
+      return {
+        ...t,
+        currentBalance: newBal,
+        history: [historyEntry, ...(t.history || [])]
+      };
+    }));
+  };
+
   const addEconomyCategory = (newCat) => {
     if (newCat && !economyCategories.includes(newCat)) {
       setEconomyCategories(prev => [...prev, newCat]);
@@ -528,6 +657,7 @@ export const WorkspaceProvider = ({ children }) => {
       timetable,
       holidays,
       assets,
+      topUps,
       userName,
     };
 
@@ -561,6 +691,7 @@ export const WorkspaceProvider = ({ children }) => {
       if (Array.isArray(data.directLinks)) setDirectLinks(data.directLinks);
       if (Array.isArray(data.holidays)) setHolidays(data.holidays);
       if (Array.isArray(data.assets)) setAssets(data.assets);
+      if (Array.isArray(data.topUps)) setTopUps(data.topUps);
       if (data.timetable && typeof data.timetable === 'object') setTimetable(data.timetable);
       if (typeof data.userName === 'string') {
         setUserNameState(data.userName);
@@ -622,6 +753,11 @@ export const WorkspaceProvider = ({ children }) => {
       addAsset,
       updateAsset,
       deleteAsset,
+      topUps,
+      addTopUp,
+      updateTopUp,
+      deleteTopUp,
+      rechargeTopUp,
       homeStats,
       setHomeStats,
       customPages,

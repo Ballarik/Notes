@@ -8,6 +8,9 @@ import { DeleteConfirmModal } from '../components/DeleteConfirmModal';
 import { EconomyChart } from '../components/EconomyChart';
 import { AddAssetModal } from '../components/AddAssetModal';
 import { PatrimonioPieChart } from '../components/PatrimonioPieChart';
+import { AddTopUpModal } from '../components/AddTopUpModal';
+import { RechargeTopUpModal } from '../components/RechargeTopUpModal';
+import { EditTopUpModal } from '../components/EditTopUpModal';
 import { 
   Wallet, 
   TrendingUp, 
@@ -23,7 +26,15 @@ import {
   Edit2,
   Check,
   X,
-  Layers
+  Layers,
+  Smartphone,
+  Calendar,
+  AlertCircle,
+  CheckCircle2,
+  ChevronDown,
+  ChevronUp,
+  History,
+  ShieldCheck
 } from 'lucide-react';
 
 export const EconomiaSection = () => {
@@ -38,10 +49,15 @@ export const EconomiaSection = () => {
     assets = [],
     addAsset,
     updateAsset,
-    deleteAsset
+    deleteAsset,
+    topUps = [],
+    addTopUp,
+    updateTopUp,
+    deleteTopUp,
+    rechargeTopUp
   } = useWorkspace();
 
-  // Active Tab: 'denaro' | 'patrimonio' (same structure as ScuolaSection)
+  // Active Tab: 'denaro' | 'patrimonio' | 'ricariche'
   const [activeTab, setActiveTab] = useState('denaro');
 
   // Denaro state
@@ -60,7 +76,14 @@ export const EconomiaSection = () => {
   const [editAssetDesc, setEditAssetDesc] = useState('');
   const [editAssetValue, setEditAssetValue] = useState('');
 
-  // Stats Calculations
+  // Ricariche state
+  const [isAddTopUpModalOpen, setIsAddTopUpModalOpen] = useState(false);
+  const [rechargeTarget, setRechargeTarget] = useState(null);
+  const [editTopUpTarget, setEditTopUpTarget] = useState(null);
+  const [deleteTopUpState, setDeleteTopUpState] = useState({ open: false, topUp: null, mousePos: null });
+  const [expandedHistoryId, setExpandedHistoryId] = useState(null);
+
+  // Stats Calculations (Denaro)
   const totalEntrate = transactions
     .filter(t => t.type === 'entrata' && t.description !== 'Saldo Iniziale')
     .reduce((acc, t) => acc + Number(t.amount), 0);
@@ -71,8 +94,38 @@ export const EconomiaSection = () => {
 
   const saldoTotale = initialBaseBalance + totalEntrate - totalUscite;
 
+  // Stats Calculations (Patrimonio)
   const totaleValoreOggetti = assets.reduce((sum, a) => sum + (Number(a.value) || 0), 0);
   const patrimonioComplessivo = saldoTotale + totaleValoreOggetti;
+
+  // Stats Calculations (Ricariche)
+  const totaleSaldoRicariche = topUps.reduce((sum, t) => sum + (Number(t.currentBalance) || 0), 0);
+  const totaleCostoMensileRicariche = topUps.reduce((sum, t) => sum + (Number(t.monthlyCost) || 0), 0);
+  const topUpsConSaldoSufficiente = topUps.filter(t => (Number(t.currentBalance) || 0) >= (Number(t.monthlyCost) || 0)).length;
+
+  // Helper for next renewal date
+  const getNextRenewalInfo = (renewalDay) => {
+    const now = new Date();
+    const currentDay = now.getDate();
+    const currentMonth = now.getMonth();
+    const currentYear = now.getFullYear();
+
+    let targetDate = new Date(currentYear, currentMonth, renewalDay);
+    if (currentDay > renewalDay) {
+      targetDate = new Date(currentYear, currentMonth + 1, renewalDay);
+    }
+
+    const diffTime = targetDate - now;
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+
+    const monthNamesShort = ['Gen', 'Feb', 'Mar', 'Apr', 'Mag', 'Giu', 'Lug', 'Ago', 'Set', 'Ott', 'Nov', 'Dic'];
+    const formattedDate = `${renewalDay} ${monthNamesShort[targetDate.getMonth()]}`;
+
+    return {
+      formattedDate,
+      daysLeft: diffDays === 0 ? 'Oggi' : `tra ${diffDays} ${diffDays === 1 ? 'giorno' : 'giorni'}`
+    };
+  };
 
   // Filtered transactions list
   const filteredTransactions = selectedCategory === 'tutti' 
@@ -90,6 +143,13 @@ export const EconomiaSection = () => {
     if (deleteAssetState.asset) {
       deleteAsset(deleteAssetState.asset.id);
       setDeleteAssetState({ open: false, asset: null, mousePos: null });
+    }
+  };
+
+  const handleConfirmDeleteTopUp = () => {
+    if (deleteTopUpState.topUp) {
+      deleteTopUp(deleteTopUpState.topUp.id);
+      setDeleteTopUpState({ open: false, topUp: null, mousePos: null });
     }
   };
 
@@ -112,7 +172,7 @@ export const EconomiaSection = () => {
 
   return (
     <div className="w-full px-4 md:px-8 pt-5 pb-16 mb-12 space-y-4 animate-fade-in">
-      {/* Page Header (identical layout to ScuolaSection) */}
+      {/* Page Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-neutral-200/80 dark:border-neutral-800/80">
         <div>
           <h1 className="text-xl font-bold text-neutral-900 dark:text-white flex items-center gap-2">
@@ -120,13 +180,13 @@ export const EconomiaSection = () => {
             <span>Economia & Finanze</span>
           </h1>
           <p className="text-[11px] text-neutral-500 dark:text-neutral-400 mt-0.5">
-            Gestisci denaro liquido, transazioni, beni e monitora il tuo patrimonio complessivo.
+            Gestisci denaro liquido, patrimonio complessivo e monitora i tuoi conti ricarica separati.
           </p>
         </div>
 
-        {/* Dynamic Action Buttons in Header depending on active tab */}
+        {/* Dynamic Action Buttons in Header */}
         <div className="flex flex-wrap items-center gap-2">
-          {activeTab === 'denaro' ? (
+          {activeTab === 'denaro' && (
             <>
               <button
                 onClick={() => setIsCatModalOpen(true)}
@@ -160,7 +220,9 @@ export const EconomiaSection = () => {
                 <span>Nuova Transazione</span>
               </button>
             </>
-          ) : (
+          )}
+
+          {activeTab === 'patrimonio' && (
             <button
               onClick={() => setIsAddAssetModalOpen(true)}
               className="px-3.5 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-md text-xs font-semibold flex items-center gap-1.5 shadow-xs transition-colors cursor-pointer"
@@ -169,10 +231,20 @@ export const EconomiaSection = () => {
               <span>Nuovo Oggetto</span>
             </button>
           )}
+
+          {activeTab === 'ricariche' && (
+            <button
+              onClick={() => setIsAddTopUpModalOpen(true)}
+              className="px-3.5 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-md text-xs font-semibold flex items-center gap-1.5 shadow-xs transition-colors cursor-pointer"
+            >
+              <Plus className="w-3.5 h-3.5" />
+              <span>Nuova Ricarica</span>
+            </button>
+          )}
         </div>
       </div>
 
-      {/* Main Tabs Navigation (exact same style and layout as ScuolaSection) */}
+      {/* Main Tabs Navigation */}
       <div className="flex items-center gap-1.5 border-b border-neutral-200 dark:border-neutral-800 pb-1.5 overflow-x-auto scrollbar-none">
         <button
           onClick={() => setActiveTab('denaro')}
@@ -197,6 +269,18 @@ export const EconomiaSection = () => {
           <Landmark className="w-3.5 h-3.5" />
           <span>Patrimonio Complessivo ({assets.length})</span>
         </button>
+
+        <button
+          onClick={() => setActiveTab('ricariche')}
+          className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold rounded-md transition-all shrink-0 cursor-pointer ${
+            activeTab === 'ricariche'
+              ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950/70 dark:text-emerald-300'
+              : 'text-neutral-500 hover:text-neutral-900 dark:hover:text-white hover:bg-neutral-100 dark:hover:bg-neutral-800/50'
+          }`}
+        >
+          <Smartphone className="w-3.5 h-3.5" />
+          <span>Ricariche ({topUps.length})</span>
+        </button>
       </div>
 
       {/* ========================================================================= */}
@@ -204,7 +288,7 @@ export const EconomiaSection = () => {
       {/* ========================================================================= */}
       {activeTab === 'denaro' && (
         <div className="space-y-4 animate-fade-in w-full">
-          {/* KPI Cards (Full Width) */}
+          {/* KPI Cards */}
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 w-full">
             {/* Saldo Totale */}
             <div className="notion-card p-3.5 space-y-1 bg-gradient-to-br from-emerald-50/50 to-transparent dark:from-emerald-950/20">
@@ -581,6 +665,246 @@ export const EconomiaSection = () => {
       )}
 
       {/* ========================================================================= */}
+      {/* SEZIONE 3: RICARICHE & CONTI SEPARATI */}
+      {/* ========================================================================= */}
+      {activeTab === 'ricariche' && (
+        <div className="space-y-4 animate-fade-in w-full">
+          {/* Informative Header Banner */}
+          <div className="p-3.5 rounded-xl bg-gradient-to-r from-emerald-50/80 via-blue-50/50 to-transparent dark:from-emerald-950/30 dark:via-blue-950/20 border border-emerald-200/80 dark:border-emerald-800/80 flex items-start gap-3 text-xs">
+            <ShieldCheck className="w-5 h-5 text-emerald-600 dark:text-emerald-400 shrink-0 mt-0.5" />
+            <div className="space-y-0.5">
+              <div className="font-bold text-neutral-900 dark:text-white">
+                Conti Ricarica Indipendenti con Rinnovo Automatico
+              </div>
+              <p className="text-[11px] text-neutral-600 dark:text-neutral-300 leading-relaxed">
+                I saldi visualizzati qui sotto appartengono ai tuoi conti separati (es. SIM telefonica, tessere trasporti). Al giorno di rinnovo mensile, il costo del canone viene automaticamente scalato <strong>solo</strong> dal saldo della specifica ricarica, senza intaccare il tuo denaro principale.
+              </p>
+            </div>
+          </div>
+
+          {/* Top KPI Cards */}
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 w-full">
+            {/* 1. Saldo Complessivo Ricariche */}
+            <div className="notion-card p-3.5 space-y-1 bg-gradient-to-br from-emerald-50/60 to-transparent dark:from-emerald-950/20 border-emerald-300 dark:border-emerald-800">
+              <div className="flex items-center justify-between text-xs text-neutral-500 dark:text-neutral-400">
+                <span className="font-bold text-emerald-800 dark:text-emerald-300">Saldo Totale Ricariche</span>
+                <Smartphone className="w-4 h-4 text-emerald-500" />
+              </div>
+              <div className="text-2xl font-bold font-mono text-emerald-600 dark:text-emerald-400">
+                € {totaleSaldoRicariche.toFixed(2)}
+              </div>
+              <div className="text-[10px] text-neutral-400">
+                Disponibile complessivamente sui conti separati
+              </div>
+            </div>
+
+            {/* 2. Spesa Mensile Totale */}
+            <div className="notion-card p-3.5 space-y-1">
+              <div className="flex items-center justify-between text-xs text-neutral-500 dark:text-neutral-400">
+                <span className="font-semibold">Costo Mensile Canoni</span>
+                <Clock className="w-4 h-4 text-neutral-400" />
+              </div>
+              <div className="text-2xl font-bold font-mono text-neutral-900 dark:text-white">
+                € {totaleCostoMensileRicariche.toFixed(2)} <span className="text-xs font-normal text-neutral-400">/ mese</span>
+              </div>
+              <div className="text-[10px] text-neutral-400">
+                Totale canoni mensili da rinnovare
+              </div>
+            </div>
+
+            {/* 3. Copertura Saldi */}
+            <div className="notion-card p-3.5 space-y-1">
+              <div className="flex items-center justify-between text-xs text-neutral-500 dark:text-neutral-400">
+                <span className="font-semibold">Stato Copertura Rinnovi</span>
+                <CheckCircle2 className="w-4 h-4 text-emerald-500" />
+              </div>
+              <div className="text-2xl font-bold font-mono text-emerald-600 dark:text-emerald-400">
+                {topUpsConSaldoSufficiente} / {topUps.length}
+              </div>
+              <div className="text-[10px] text-neutral-400">
+                {topUps.length === 0 ? 'Nessun conto configurato' : topUpsConSaldoSufficiente === topUps.length ? 'Tutti i conti hanno credito per il prossimo rinnovo' : 'Attenzione: alcuni conti necessitano ricarica'}
+              </div>
+            </div>
+          </div>
+
+          {/* Cards Grid of Top-Ups */}
+          {topUps.length > 0 ? (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {topUps.map((t) => {
+                const bal = parseFloat(t.currentBalance) || 0;
+                const cost = parseFloat(t.monthlyCost) || 0;
+                const isSufficient = bal >= cost;
+                const monthsCovered = cost > 0 ? Math.floor(bal / cost) : 0;
+                const renewalInfo = getNextRenewalInfo(parseInt(t.renewalDay, 10) || 1);
+                const isHistoryExpanded = expandedHistoryId === t.id;
+
+                return (
+                  <div 
+                    key={t.id}
+                    className="notion-card p-4 space-y-3 bg-white dark:bg-[#202020] border border-neutral-200 dark:border-neutral-800 rounded-xl shadow-xs flex flex-col justify-between"
+                  >
+                    {/* Card Top: Name & Status Badge */}
+                    <div className="space-y-2">
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="flex items-center gap-2 min-w-0">
+                          <span className="p-1.5 rounded-lg bg-emerald-50 dark:bg-emerald-950/70 text-emerald-600 dark:text-emerald-400 shrink-0">
+                            <Smartphone className="w-4 h-4" />
+                          </span>
+                          <h3 className="text-sm font-bold text-neutral-900 dark:text-white truncate" title={t.name}>
+                            {t.name}
+                          </h3>
+                        </div>
+
+                        {/* Status Badge */}
+                        <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold shrink-0 ${
+                          isSufficient
+                            ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300'
+                            : 'bg-red-100 text-red-800 dark:bg-red-950 dark:text-red-300'
+                        }`}>
+                          {isSufficient ? 'Credito OK' : 'Ricarica Necessaria'}
+                        </span>
+                      </div>
+
+                      {/* Main Balance Display */}
+                      <div className="p-3 rounded-xl bg-neutral-50 dark:bg-neutral-900/60 border border-neutral-200/80 dark:border-neutral-800 space-y-0.5">
+                        <span className="text-[10px] font-semibold text-neutral-400 uppercase tracking-wider block">
+                          Saldo Attuale Disponibile
+                        </span>
+                        <div className={`text-2xl font-bold font-mono ${bal >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-500'}`}>
+                          € {bal.toFixed(2)}
+                        </div>
+                      </div>
+
+                      {/* Details Grid */}
+                      <div className="space-y-1.5 text-xs">
+                        <div className="flex items-center justify-between text-neutral-500 dark:text-neutral-400">
+                          <span>Costo Mensile:</span>
+                          <span className="font-mono font-bold text-neutral-900 dark:text-white">
+                            € {cost.toFixed(2)} / mese
+                          </span>
+                        </div>
+
+                        <div className="flex items-center justify-between text-neutral-500 dark:text-neutral-400">
+                          <span>Giorno di Rinnovo:</span>
+                          <span className="font-semibold text-neutral-800 dark:text-neutral-200">
+                            Il {t.renewalDay} di ogni mese
+                          </span>
+                        </div>
+
+                        <div className="flex items-center justify-between text-neutral-500 dark:text-neutral-400">
+                          <span>Prossimo Rinnovo:</span>
+                          <span className="font-semibold text-emerald-600 dark:text-emerald-400">
+                            {renewalInfo.formattedDate} ({renewalInfo.daysLeft})
+                          </span>
+                        </div>
+
+                        <div className="flex items-center justify-between text-neutral-500 dark:text-neutral-400 pt-1 border-t border-neutral-100 dark:border-neutral-800">
+                          <span>Autonomia stimata:</span>
+                          <span className={`font-mono font-bold ${monthsCovered > 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-500'}`}>
+                            {monthsCovered} {monthsCovered === 1 ? 'mese coperto' : 'mesi coperti'}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Card Actions & History Accordion */}
+                    <div className="space-y-2 pt-2 border-t border-neutral-100 dark:border-neutral-800">
+                      <div className="flex items-center gap-1.5">
+                        {/* Recharge Button */}
+                        <button
+                          onClick={() => setRechargeTarget(t)}
+                          className="flex-1 px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-bold flex items-center justify-center gap-1 shadow-xs transition-colors cursor-pointer"
+                        >
+                          <Plus className="w-3.5 h-3.5" />
+                          <span>Ricarica</span>
+                        </button>
+
+                        {/* Edit Button */}
+                        <button
+                          onClick={() => setEditTopUpTarget(t)}
+                          className="p-1.5 text-neutral-400 hover:text-neutral-700 dark:hover:text-neutral-200 hover:bg-neutral-100 dark:hover:bg-neutral-800 rounded-lg transition-colors cursor-pointer"
+                          title="Modifica parametri ricarica"
+                        >
+                          <Edit2 className="w-3.5 h-3.5" />
+                        </button>
+
+                        {/* Delete Button */}
+                        <button
+                          onClick={(e) => setDeleteTopUpState({ open: true, topUp: t, mousePos: { x: e.clientX, y: e.clientY } })}
+                          className="p-1.5 text-neutral-400 hover:text-red-500 hover:bg-neutral-100 dark:hover:bg-neutral-800 rounded-lg transition-colors cursor-pointer"
+                          title="Elimina conto ricarica"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+
+                      {/* Toggle History Button */}
+                      <button
+                        onClick={() => setExpandedHistoryId(isHistoryExpanded ? null : t.id)}
+                        className="w-full text-[11px] text-neutral-400 hover:text-neutral-700 dark:hover:text-neutral-200 flex items-center justify-center gap-1 py-1 transition-colors cursor-pointer"
+                      >
+                        <History className="w-3 h-3" />
+                        <span>{isHistoryExpanded ? 'Nascondi Storico Movimenti' : 'Visualizza Storico Movimenti'}</span>
+                        {isHistoryExpanded ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
+                      </button>
+
+                      {/* Expandable History List */}
+                      {isHistoryExpanded && (
+                        <div className="space-y-1 pt-1 max-h-36 overflow-y-auto pr-1 border-t border-neutral-100 dark:border-neutral-800 text-[10px] animate-fade-in">
+                          {t.history && t.history.length > 0 ? (
+                            t.history.map((h) => (
+                              <div 
+                                key={h.id}
+                                className="flex items-center justify-between p-1.5 rounded bg-neutral-50 dark:bg-neutral-900 border border-neutral-200/60 dark:border-neutral-800"
+                              >
+                                <div className="space-y-0.5 min-w-0 flex-1 mr-2">
+                                  <div className="font-semibold text-neutral-800 dark:text-neutral-200 truncate">
+                                    {h.note || (h.amount > 0 ? 'Ricarica conto' : 'Rinnovo canone')}
+                                  </div>
+                                  <div className="text-[9px] text-neutral-400 font-mono">
+                                    {h.date}
+                                  </div>
+                                </div>
+                                <div className={`font-mono font-bold shrink-0 ${h.amount >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-500'}`}>
+                                  {h.amount >= 0 ? '+' : ''}€ {Number(h.amount).toFixed(2)}
+                                </div>
+                              </div>
+                            ))
+                          ) : (
+                            <div className="text-center text-neutral-400 italic py-2">
+                              Nessun movimento registrato finora.
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          ) : (
+            <div className="notion-card p-12 text-center space-y-3 bg-white dark:bg-[#202020] border border-neutral-200 dark:border-neutral-800 rounded-xl">
+              <Smartphone className="w-8 h-8 text-neutral-400 mx-auto opacity-50" />
+              <div className="space-y-1">
+                <h3 className="text-sm font-bold text-neutral-800 dark:text-neutral-200">
+                  Nessun conto ricarica presente
+                </h3>
+                <p className="text-xs text-neutral-400 max-w-sm mx-auto">
+                  Aggiungi le tue ricariche telefoniche o tessere prepagate per monitorare i saldi e scalare i canoni al giorno di rinnovo.
+                </p>
+              </div>
+              <button
+                onClick={() => setIsAddTopUpModalOpen(true)}
+                className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-xl shadow-xs transition-colors cursor-pointer"
+              >
+                + Aggiungi la tua prima Ricarica
+              </button>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* ========================================================================= */}
       {/* MODALS */}
       {/* ========================================================================= */}
 
@@ -639,6 +963,38 @@ export const EconomiaSection = () => {
         onConfirm={handleConfirmDeleteAsset}
         mousePos={deleteAssetState.mousePos}
         itemTitle={deleteAssetState.asset ? `l'oggetto "${deleteAssetState.asset.name}" (€${Number(deleteAssetState.asset.value).toFixed(2)})` : ''}
+      />
+
+      {/* Add Top-Up Wizard Modal (3 passaggi) */}
+      <AddTopUpModal
+        isOpen={isAddTopUpModalOpen}
+        onClose={() => setIsAddTopUpModalOpen(false)}
+        onAddTopUp={addTopUp}
+      />
+
+      {/* Recharge Top-Up Modal */}
+      <RechargeTopUpModal
+        isOpen={!!rechargeTarget}
+        onClose={() => setRechargeTarget(null)}
+        topUp={rechargeTarget}
+        onRecharge={rechargeTopUp}
+      />
+
+      {/* Edit Top-Up Modal */}
+      <EditTopUpModal
+        isOpen={!!editTopUpTarget}
+        onClose={() => setEditTopUpTarget(null)}
+        topUp={editTopUpTarget}
+        onUpdateTopUp={updateTopUp}
+      />
+
+      {/* Delete Confirmation Modal for Top-Ups */}
+      <DeleteConfirmModal
+        isOpen={deleteTopUpState.open}
+        onClose={() => setDeleteTopUpState({ open: false, topUp: null, mousePos: null })}
+        onConfirm={handleConfirmDeleteTopUp}
+        mousePos={deleteTopUpState.mousePos}
+        itemTitle={deleteTopUpState.topUp ? `il conto ricarica "${deleteTopUpState.topUp.name}"` : ''}
       />
     </div>
   );

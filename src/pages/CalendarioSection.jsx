@@ -12,12 +12,13 @@ import {
   Grid,
   CalendarDays,
   Sun,
-  Trash2
+  Trash2,
+  Smartphone
 } from 'lucide-react';
 import { AddHolidayModal } from '../components/AddHolidayModal';
 
 export const CalendarioSection = () => {
-  const { grades, schoolItems, transactions, holidays = [], addHoliday, deleteHoliday, isSidebarOpen } = useWorkspace();
+  const { grades, schoolItems, transactions, holidays = [], topUps = [], addHoliday, deleteHoliday, isSidebarOpen } = useWorkspace();
 
   const [currentDate, setCurrentDate] = useState(new Date()); // Active Date
   const [viewMode, setViewMode] = useState('mese'); // 'mese' | 'settimana'
@@ -296,6 +297,7 @@ export const CalendarioSection = () => {
                 const holidayObj = holidays.find(h => h.date === formattedDate);
                 const hasHoliday = !!holidayObj;
                 const otherEvents = dayEvents.filter(ev => ev.type !== 'vacanza');
+                const dayTopUps = topUps.filter(t => (parseInt(t.renewalDay, 10) || 1) === dayNum);
 
                 return (
                   <div 
@@ -308,8 +310,8 @@ export const CalendarioSection = () => {
                           : 'bg-white dark:bg-[#191919] border-neutral-200/80 dark:border-neutral-800'
                     }`}
                   >
-                    <div className="flex items-start justify-between gap-1 overflow-hidden">
-                      <div className="flex items-center gap-1.5 min-w-0 flex-1">
+                    <div className="flex items-start justify-between gap-1 overflow-visible">
+                      <div className="flex items-center gap-1.5 min-w-0 flex-1 flex-wrap">
                         <span className={`text-xs font-extrabold shrink-0 ${
                           hasHoliday 
                             ? 'text-white drop-shadow-xs' 
@@ -319,6 +321,41 @@ export const CalendarioSection = () => {
                         }`}>
                           {dayNum}
                         </span>
+
+                        {/* Pallino Verde Ricarica con Dettagli al Passaggio del Mouse */}
+                        {dayTopUps.length > 0 && (
+                          <div className="relative group/topup inline-flex items-center shrink-0">
+                            <span 
+                              className={`w-2.5 h-2.5 rounded-full bg-emerald-500 ring-2 ${hasHoliday ? 'ring-white/80' : 'ring-emerald-200 dark:ring-emerald-900'} shadow-xs cursor-pointer hover:scale-125 transition-transform`} 
+                            />
+                            
+                            {/* Hover Tooltip Dettagli Ricarica */}
+                            <div className="absolute left-0 bottom-full mb-1.5 hidden group-hover/topup:flex flex-col z-50 w-52 p-2.5 bg-neutral-900/95 dark:bg-black/95 text-white text-[11px] rounded-xl shadow-2xl backdrop-blur-md border border-neutral-700 pointer-events-none animate-fade-in">
+                              <div className="flex items-center gap-1.5 pb-1.5 border-b border-neutral-700 font-bold text-emerald-400">
+                                <Smartphone className="w-3.5 h-3.5 shrink-0" />
+                                <span>Rinnovo Ricarica ({dayTopUps.length})</span>
+                              </div>
+                              <div className="space-y-2 pt-1.5">
+                                {dayTopUps.map(t => (
+                                  <div key={t.id} className="space-y-0.5">
+                                    <div className="font-semibold text-white flex items-center justify-between">
+                                      <span className="truncate">{t.name}</span>
+                                      <span className="font-mono text-emerald-400 shrink-0 ml-1">€{Number(t.monthlyCost).toFixed(2)}/m</span>
+                                    </div>
+                                    <div className="flex items-center justify-between text-[10px] text-neutral-400 font-mono">
+                                      <span>Saldo: €{Number(t.currentBalance).toFixed(2)}</span>
+                                      <span className={Number(t.currentBalance) >= Number(t.monthlyCost) ? 'text-emerald-400 font-bold' : 'text-amber-400 font-bold'}>
+                                        {Number(t.currentBalance) >= Number(t.monthlyCost) ? '✓ Coperto' : '⚠️ Ricaricare'}
+                                      </span>
+                                    </div>
+                                  </div>
+                                ))}
+                              </div>
+                              <div className="absolute left-2 top-full w-0 h-0 border-x-4 border-x-transparent border-t-4 border-t-neutral-900/95" />
+                            </div>
+                          </div>
+                        )}
+
                         {hasHoliday && (
                           <span 
                             onClick={() => setSelectedEvent({
@@ -380,6 +417,7 @@ export const CalendarioSection = () => {
               const holidayObj = holidays.find(h => h.date === formattedDate);
               const hasHoliday = !!holidayObj;
               const otherEvents = dayEvents.filter(ev => ev.type !== 'vacanza');
+              const dayTopUps = topUps.filter(t => (parseInt(t.renewalDay, 10) || 1) === d.getDate());
 
               return (
                 <div 
@@ -408,6 +446,41 @@ export const CalendarioSection = () => {
                         }`}>
                           {d.getDate()} {monthNames[d.getMonth()].slice(0, 3)}
                         </span>
+
+                        {/* Pallino Verde Ricarica Settimana con Hover */}
+                        {dayTopUps.length > 0 && (
+                          <div className="relative group/topup inline-flex items-center shrink-0">
+                            <span 
+                              className={`w-2.5 h-2.5 rounded-full bg-emerald-500 ring-2 ${hasHoliday ? 'ring-white/80' : 'ring-emerald-200 dark:ring-emerald-900'} shadow-xs cursor-pointer hover:scale-125 transition-transform`} 
+                            />
+                            
+                            {/* Hover Tooltip Dettagli Ricarica */}
+                            <div className="absolute left-0 bottom-full mb-1.5 hidden group-hover/topup:flex flex-col z-50 w-52 p-2.5 bg-neutral-900/95 dark:bg-black/95 text-white text-[11px] rounded-xl shadow-2xl backdrop-blur-md border border-neutral-700 pointer-events-none animate-fade-in">
+                              <div className="flex items-center gap-1.5 pb-1.5 border-b border-neutral-700 font-bold text-emerald-400">
+                                <Smartphone className="w-3.5 h-3.5 shrink-0" />
+                                <span>Rinnovo Ricarica ({dayTopUps.length})</span>
+                              </div>
+                              <div className="space-y-2 pt-1.5">
+                                {dayTopUps.map(t => (
+                                  <div key={t.id} className="space-y-0.5">
+                                    <div className="font-semibold text-white flex items-center justify-between">
+                                      <span className="truncate">{t.name}</span>
+                                      <span className="font-mono text-emerald-400 shrink-0 ml-1">€{Number(t.monthlyCost).toFixed(2)}/m</span>
+                                    </div>
+                                    <div className="flex items-center justify-between text-[10px] text-neutral-400 font-mono">
+                                      <span>Saldo: €{Number(t.currentBalance).toFixed(2)}</span>
+                                      <span className={Number(t.currentBalance) >= Number(t.monthlyCost) ? 'text-emerald-400 font-bold' : 'text-amber-400 font-bold'}>
+                                        {Number(t.currentBalance) >= Number(t.monthlyCost) ? '✓ Coperto' : '⚠️ Ricaricare'}
+                                      </span>
+                                    </div>
+                                  </div>
+                                ))}
+                              </div>
+                              <div className="absolute left-2 top-full w-0 h-0 border-x-4 border-x-transparent border-t-4 border-t-neutral-900/95" />
+                            </div>
+                          </div>
+                        )}
+
                         {hasHoliday && (
                           <span 
                             onClick={() => setSelectedEvent({

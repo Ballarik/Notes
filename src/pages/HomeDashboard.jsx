@@ -10,7 +10,8 @@ import {
   Clock,
   X,
   CalendarDays,
-  CalendarClock
+  CalendarClock,
+  Smartphone
 } from 'lucide-react';
 
 export const HomeDashboard = () => {
@@ -19,6 +20,7 @@ export const HomeDashboard = () => {
     schoolItems, 
     grades,
     holidays = [],
+    topUps = [],
     timetable = {},
     initialBaseBalance = 840.00,
     userName = 'Riccardo',
@@ -358,6 +360,7 @@ export const HomeDashboard = () => {
                 const holidayObj = holidays.find(h => h.date === formattedDate);
                 const hasHoliday = !!holidayObj;
                 const otherEvents = dayEvents.filter(ev => ev.type !== 'vacanza');
+                const dayTopUps = topUps.filter(t => (parseInt(t.renewalDay, 10) || 1) === d.getDate());
 
                 return (
                   <div 
@@ -370,14 +373,48 @@ export const HomeDashboard = () => {
                           : 'bg-white dark:bg-[#191919] border-neutral-200/70 dark:border-neutral-800'
                     }`}
                   >
-                    <div className={`flex items-start justify-between border-b pb-1 gap-1 ${hasHoliday ? 'border-white/20' : 'border-neutral-100 dark:border-neutral-800'}`}>
+                    <div className={`flex items-start justify-between border-b pb-1 gap-1 overflow-visible ${hasHoliday ? 'border-white/20' : 'border-neutral-100 dark:border-neutral-800'}`}>
                       <div className={`text-[10px] font-bold uppercase ${hasHoliday ? 'text-white/80' : 'text-neutral-400'}`}>
                         {weekdayNamesShort[index]}
                       </div>
-                      <div className="flex items-baseline gap-1 min-w-0 flex-1 justify-end">
+                      <div className="flex items-center gap-1 min-w-0 flex-1 justify-end flex-wrap">
                         <span className={`text-[11px] font-extrabold shrink-0 ${hasHoliday ? 'text-white drop-shadow-xs' : isToday ? 'text-orange-600 dark:text-orange-400' : 'text-neutral-700 dark:text-neutral-300'}`}>
                           {d.getDate()}
                         </span>
+
+                        {/* Pallino Verde Ricarica con Hover */}
+                        {dayTopUps.length > 0 && (
+                          <div className="relative group/hometopup inline-flex items-center shrink-0">
+                            <span 
+                              className={`w-2 h-2 rounded-full bg-emerald-500 ring-2 ${hasHoliday ? 'ring-white/80' : 'ring-emerald-200 dark:ring-emerald-900'} shadow-xs cursor-pointer hover:scale-125 transition-transform`} 
+                            />
+                            {/* Hover Tooltip Dettagli Ricarica */}
+                            <div className="absolute right-0 bottom-full mb-1.5 hidden group-hover/hometopup:flex flex-col z-50 w-48 p-2 bg-neutral-900/95 dark:bg-black/95 text-white text-[10px] rounded-xl shadow-2xl backdrop-blur-md border border-neutral-700 pointer-events-none animate-fade-in">
+                              <div className="flex items-center gap-1 pb-1 border-b border-neutral-700 font-bold text-emerald-400">
+                                <Smartphone className="w-3 h-3 shrink-0" />
+                                <span>Rinnovo Ricarica ({dayTopUps.length})</span>
+                              </div>
+                              <div className="space-y-1 pt-1">
+                                {dayTopUps.map(t => (
+                                  <div key={t.id} className="space-y-0.5">
+                                    <div className="font-semibold text-white flex items-center justify-between">
+                                      <span className="truncate">{t.name}</span>
+                                      <span className="font-mono text-emerald-400 shrink-0">€{Number(t.monthlyCost).toFixed(2)}/m</span>
+                                    </div>
+                                    <div className="flex items-center justify-between text-[9px] text-neutral-400 font-mono">
+                                      <span>Saldo: €{Number(t.currentBalance).toFixed(2)}</span>
+                                      <span className={Number(t.currentBalance) >= Number(t.monthlyCost) ? 'text-emerald-400 font-bold' : 'text-amber-400 font-bold'}>
+                                        {Number(t.currentBalance) >= Number(t.monthlyCost) ? '✓ OK' : '⚠️ Ricarica'}
+                                      </span>
+                                    </div>
+                                  </div>
+                                ))}
+                              </div>
+                              <div className="absolute right-2 top-full w-0 h-0 border-x-4 border-x-transparent border-t-4 border-t-neutral-900/95" />
+                            </div>
+                          </div>
+                        )}
+
                         {hasHoliday && (
                           <span 
                             onClick={() => setSelectedHomeEvent({

@@ -1,7 +1,7 @@
 {
   "appName": "Personal Workspace",
   "version": "1.0",
-  "savedAt": "2026-08-17T14:12:56.513Z",
+  "savedAt": "2026-08-17T15:12:03.528Z",
   "userName": "Utente",
   "initialBaseBalance": 0,
   "baseBalance": 0,
@@ -69,5 +69,6 @@
   "subjects": [],
   "timetable": {},
   "holidays": [],
-  "assets": []
+  "assets": [],
+  "topUps": []
 }
