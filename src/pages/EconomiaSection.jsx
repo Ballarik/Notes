@@ -150,7 +150,7 @@ export const EconomiaSection = () => {
       </div>
 
       {/* Grafico Movimenti Finanziari (Ultimi 90 Giorni) */}
-      <EconomyChart transactions={transactions} />
+      <EconomyChart transactions={transactions} initialBaseBalance={initialBaseBalance} />
 
       {/* Category Filter Pills Bar */}
       <div className="flex items-center gap-1.5 overflow-x-auto py-1 scrollbar-none w-full">

@@ -1,14 +1,14 @@
 import React, { useState } from 'react';
 import { Wallet } from 'lucide-react';
 
-export const EconomyChart = ({ transactions }) => {
+export const EconomyChart = ({ transactions, initialBaseBalance = 840.00 }) => {
   const [hoveredPoint, setHoveredPoint] = useState(null);
 
   // Generate 90 days array ending today
   const generate90DaysData = () => {
     const data = [];
     const today = new Date();
-    const BASE_BALANCE = 840.00;
+    const BASE_BALANCE = initialBaseBalance;
     
     // Sort real transactions chronologically
     const realTx = transactions.filter(t => t.description !== 'Saldo Iniziale');
