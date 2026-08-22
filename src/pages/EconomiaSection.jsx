@@ -34,7 +34,9 @@ import {
   ChevronDown,
   ChevronUp,
   History,
-  ShieldCheck
+  ShieldCheck,
+  RefreshCw,
+  Zap
 } from 'lucide-react';
 
 export const EconomiaSection = () => {
@@ -54,7 +56,9 @@ export const EconomiaSection = () => {
     addTopUp,
     updateTopUp,
     deleteTopUp,
-    rechargeTopUp
+    rechargeTopUp,
+    applyRenewalNow,
+    checkAndApplyRenewals
   } = useWorkspace();
 
   // Active Tab: 'denaro' | 'patrimonio' | 'ricariche'
@@ -233,13 +237,24 @@ export const EconomiaSection = () => {
           )}
 
           {activeTab === 'ricariche' && (
-            <button
-              onClick={() => setIsAddTopUpModalOpen(true)}
-              className="px-3.5 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-md text-xs font-semibold flex items-center gap-1.5 shadow-xs transition-colors cursor-pointer"
-            >
-              <Plus className="w-3.5 h-3.5" />
-              <span>Nuova Ricarica</span>
-            </button>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={checkAndApplyRenewals}
+                className="px-3 py-1.5 bg-neutral-100 hover:bg-neutral-200 dark:bg-neutral-800 dark:hover:bg-neutral-700 text-neutral-700 dark:text-neutral-200 rounded-md text-xs font-semibold flex items-center gap-1.5 transition-colors border border-neutral-200 dark:border-neutral-700 cursor-pointer"
+                title="Controlla se ci sono canoni scaduti da scalare"
+              >
+                <RefreshCw className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
+                <span>Verifica Rinnovi</span>
+              </button>
+
+              <button
+                onClick={() => setIsAddTopUpModalOpen(true)}
+                className="px-3.5 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-md text-xs font-semibold flex items-center gap-1.5 shadow-xs transition-colors cursor-pointer"
+              >
+                <Plus className="w-3.5 h-3.5" />
+                <span>Nuova Ricarica</span>
+              </button>
+            </div>
           )}
         </div>
       </div>
@@ -813,10 +828,20 @@ export const EconomiaSection = () => {
                         {/* Recharge Button */}
                         <button
                           onClick={() => setRechargeTarget(t)}
-                          className="flex-1 px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-bold flex items-center justify-center gap-1 shadow-xs transition-colors cursor-pointer"
+                          className="flex-1 px-2.5 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-bold flex items-center justify-center gap-1 shadow-xs transition-colors cursor-pointer"
                         >
                           <Plus className="w-3.5 h-3.5" />
                           <span>Ricarica</span>
+                        </button>
+
+                        {/* Deduct Monthly Cost Now Button */}
+                        <button
+                          onClick={() => applyRenewalNow(t.id)}
+                          className="px-2.5 py-1.5 bg-neutral-100 hover:bg-amber-100 dark:bg-neutral-800 dark:hover:bg-amber-950/60 text-neutral-700 hover:text-amber-800 dark:text-neutral-300 dark:hover:text-amber-300 border border-neutral-200 dark:border-neutral-700 rounded-lg text-xs font-bold flex items-center justify-center gap-1 transition-colors cursor-pointer"
+                          title={`Scala subito il canone di €${Number(t.monthlyCost).toFixed(2)} dal conto`}
+                        >
+                          <Zap className="w-3.5 h-3.5 text-amber-500" />
+                          <span>Scala Canone</span>
                         </button>
 
                         {/* Edit Button */}

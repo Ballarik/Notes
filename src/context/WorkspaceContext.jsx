@@ -2,31 +2,74 @@ import React, { createContext, useContext, useState, useEffect, useRef } from 'r
 
 const WorkspaceContext = createContext();
 
-const INITIAL_BASE_BALANCE = 840.00;
-
-const initialEconomyData = [
-  { id: '1', date: '2026-08-15', description: 'Libri Scolastici', amount: 85.00, category: 'Scuola', type: 'uscita' },
-  { id: '2', date: '2026-08-14', description: 'Stipendio Lavoretto', amount: 350.00, category: 'Stipendio', type: 'entrata' },
-  { id: '3', date: '2026-08-12', description: 'Abbonamento Mezzi', amount: 35.00, category: 'Trasporti', type: 'uscita' },
-  { id: '4', date: '2026-08-10', description: 'Cancelleria & Quaderni', amount: 18.50, category: 'Scuola', type: 'uscita' },
+// Mock Initial Data
+const initialTransactions = [
+  { id: '1', date: '2026-08-14', description: 'Libri Scolastici', amount: 84.50, type: 'uscita', category: 'Scuola', notes: 'Manuali di matematica e fisica' },
+  { id: '2', date: '2026-08-12', description: 'Paghetta Settimanale', amount: 50.00, type: 'entrata', category: 'Altro', notes: 'Lavori estivi in giardino' },
+  { id: '3', date: '2026-08-10', description: 'Spesa Cancelleria', amount: 22.30, type: 'uscita', category: 'Scuola', notes: 'Quaderni, penne e cartelle' },
+  { id: '4', date: '2026-08-08', description: 'Pizza con Amici', amount: 18.00, type: 'uscita', category: 'Svago', notes: 'Uscita del venerdì sera' },
+  { id: '5', date: '2026-08-05', description: 'Regalo Compleanno Nonna', amount: 100.00, type: 'entrata', category: 'Altro', notes: 'Regalo per il compleanno' },
 ];
 
-const initialSchoolData = [
-  { id: 's1', subject: 'Matematica', title: 'Verifica Integrali e Derivate', date: '2026-09-10', status: 'da_fare', priority: 'Alta' },
-  { id: 's2', subject: 'Informatica', title: 'Progetto React / Notion Web App', date: '2026-08-20', status: 'in_corso', priority: 'Media' },
-  { id: 's3', subject: 'Fisica', title: 'Relazione Elettromagnetismo', date: '2026-08-18', status: 'completato', priority: 'Alta' },
-  { id: 's4', subject: 'Italiano', title: 'Analisi del Testo - Divina Commedia', date: '2026-09-05', status: 'da_fare', priority: 'Bassa' },
+const initialSchoolItems = [
+  { id: 's1', title: 'Esercizi Matematica - Limiti e Derivate', subject: 'Matematica', date: '2026-08-18', status: 'in_corso', priority: 'alta', notes: 'Pagina 240, numeri dal 15 al 30' },
+  { id: 's2', title: 'Saggio Breve Italiano - Il Romanticismo', subject: 'Italiano', date: '2026-08-22', status: 'da_fare', priority: 'media', notes: 'Minimo 3 colonne, citare Leopardi' },
+  { id: 's3', title: 'Relazione di Fisica sul Pendolo', subject: 'Fisica', date: '2026-08-25', status: 'completato', priority: 'bassa', notes: 'Con grafici e calcolo errore' },
+  { id: 's4', title: 'Vocaboli Inglese - Unit 4', subject: 'Inglese', date: '2026-08-19', status: 'da_fare', priority: 'alta', notes: 'Ripassare phrasal verbs' }
 ];
 
-const initialGradesData = [];
-
-const initialHolidays = [];
+const initialGradesData = [
+  { id: 'g1', subject: 'Matematica', grade: 8.5, weight: 1.0, title: 'Verifica Trigonometria', date: '2026-10-15', notes: 'Ottima prova scritta', noAverage: false },
+  { id: 'g2', subject: 'Matematica', grade: 7.0, weight: 0.5, title: 'Interrogazione Orale', date: '2026-11-20', notes: 'Buona preparazione', noAverage: false },
+  { id: 'g3', subject: 'Fisica', grade: 9.0, weight: 1.0, title: 'Test Termodinamica', date: '2026-10-28', notes: 'Eccellente risoluzione problemi', noAverage: false },
+  { id: 'g4', subject: 'Italiano', grade: 7.5, weight: 1.0, title: 'Tema sul Decadentismo', date: '2026-11-05', notes: 'Buon contenuto, curare la sintassi', noAverage: false },
+  { id: 'g5', subject: 'Inglese', grade: 9.5, weight: 1.0, title: 'Reading & Listening Comprehension', date: '2026-12-02', notes: 'Fluente e preciso', noAverage: false },
+  { id: 'g6', subject: 'Storia', grade: 8.0, weight: 1.0, title: 'Verifica Prima Guerra Mondiale', date: '2026-11-12', notes: 'Quadro storico completo', noAverage: false }
+];
 
 const initialAssets = [
   { id: 'a1', name: 'Computer / Laptop', description: 'MacBook per studio e sviluppo', value: 1200.00, dateAdded: '2026-08-01' },
   { id: 'a2', name: 'Smartphone', description: 'iPhone principale', value: 750.00, dateAdded: '2026-08-05' },
   { id: 'a3', name: 'Bicicletta', description: 'Bici da città per spostamenti', value: 250.00, dateAdded: '2026-08-10' }
 ];
+
+// Helper: Process top-up renewals (deduct monthly cost when renewalDay arrives)
+export const processRenewals = (list) => {
+  if (!Array.isArray(list) || list.length === 0) return { hasChanged: false, updated: list };
+  const now = new Date();
+  const currentYear = now.getFullYear();
+  const currentMonth = now.getMonth() + 1;
+  const currentDay = now.getDate();
+  const currentCycle = `${currentYear}-${String(currentMonth).padStart(2, '0')}`;
+
+  let hasChanged = false;
+  const updated = list.map(item => {
+    const renewalDay = parseInt(item.renewalDay, 10) || 1;
+    // If today's day is on or after the renewal day and this month hasn't been deducted yet
+    if (currentDay >= renewalDay && item.lastDeductionMonth !== currentCycle) {
+      hasChanged = true;
+      const cost = parseFloat(item.monthlyCost) || 0;
+      const newBalance = Math.round(((parseFloat(item.currentBalance) || 0) - cost) * 100) / 100;
+      const renewalDateStr = `${currentYear}-${String(currentMonth).padStart(2, '0')}-${String(Math.min(currentDay, renewalDay)).padStart(2, '0')}`;
+      const historyEntry = {
+        id: 'ren_' + Date.now() + '_' + Math.random().toString(36).substring(2, 6),
+        date: renewalDateStr,
+        amount: -cost,
+        type: 'rinnovo',
+        note: `Rinnovo mensile automatico (-€${cost.toFixed(2)})`
+      };
+      return {
+        ...item,
+        currentBalance: newBalance,
+        lastDeductionMonth: currentCycle,
+        history: [historyEntry, ...(item.history || [])]
+      };
+    }
+    return item;
+  });
+
+  return { hasChanged, updated };
+};
 
 const initialTopUps = [
   {
@@ -59,41 +102,55 @@ const initialHomeStats = [
 
 const initialPages = [
   {
-    id: 'p1',
-    title: 'Note Rapide & Obiettivi',
-    icon: '📌',
+    id: 'page_1',
+    title: 'Obiettivi 2026',
+    icon: '🎯',
     cover: null,
-    updatedAt: 'Oggi 14:15',
+    updatedAt: '2 ore fa',
     blocks: [
-      { id: 'b1', type: 'h2', content: 'Benvenuto nel tuo spazio personale!' },
-      { id: 'b2', type: 'paragraph', content: 'Questo è un editor minimal stile Notion. Puoi aggiungere pagine, organizzare compiti, gestire finanze e tenere traccia di tutto.' },
-      { id: 'b3', type: 'todo', content: 'Configurare la struttura iniziale delle pagine', checked: true },
-      { id: 'b4', type: 'todo', content: 'Fornire le statistiche personalizzate per la Home', checked: false },
-      { id: 'b5', type: 'todo', content: 'Personalizzare la sezione Scuola ed Economia', checked: false },
+      { id: 'b1', type: 'heading2', content: 'Obiettivi Scolastici' },
+      { id: 'b2', type: 'todo', content: 'Mantenere la media sopra l\'8.0 in tutte le materie', checked: false },
+      { id: 'b3', type: 'todo', content: 'Consegnare tutti i progetti entro le scadenze', checked: true },
+      { id: 'b4', type: 'heading2', content: 'Obiettivi Personali & Finanziari' },
+      { id: 'b5', type: 'todo', content: 'Risparmiare 50€ al mese', checked: true },
+      { id: 'b6', type: 'todo', content: 'Leggere 1 libro extra al mese', checked: false }
     ]
   }
 ];
 
+const initialHolidays = [
+  { id: 'h_capodanno', name: 'Capodanno', date: '2026-01-01' },
+  { id: 'h_epifania', name: 'Epifania', date: '2026-01-06' },
+  { id: 'h_pasquetta', name: 'Lunedì dell\'Angelo', date: '2026-04-06' },
+  { id: 'h_liberazione', name: 'Festa della Liberazione', date: '2026-04-25' },
+  { id: 'h_lavoro', name: 'Festa del Lavoro', date: '2026-05-01' },
+  { id: 'h_repubblica', name: 'Festa della Repubblica', date: '2026-06-02' },
+  { id: 'h_ferragosto', name: 'Ferragosto', date: '2026-08-15' },
+  { id: 'h_tutti_santi', name: 'Tutti i Santi', date: '2026-11-01' },
+  { id: 'h_immacolata', name: 'Immacolata Concezione', date: '2026-12-08' },
+  { id: 'h_natale', name: 'Natale', date: '2026-12-25' },
+  { id: 'h_santo_stefano', name: 'Santo Stefano', date: '2026-12-26' }
+];
+
 export const WorkspaceProvider = ({ children }) => {
-  // Navigation & UI State (Always defaults to Home on page open)
-  const [activeTab, setActiveTab] = useState('home');
+  const [activeTab, setActiveTab] = useState('home'); // 'home', 'scuola', 'economia', 'calendario', 'impostazioni', 'custom_page'
   const [activePageId, setActivePageId] = useState(null);
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [isDarkMode, setIsDarkMode] = useState(() => {
     const saved = localStorage.getItem('notion_darkMode');
-    return saved !== null ? JSON.parse(saved) : false;
+    return saved !== null ? JSON.parse(saved) : true;
   });
   const [isSearchOpen, setIsSearchOpen] = useState(false);
 
-  // App Data (with LocalStorage fallback)
+  // Core Data States with localStorage persistence
   const [transactions, setTransactions] = useState(() => {
     const saved = localStorage.getItem('notion_transactions');
-    return saved ? JSON.parse(saved).filter(t => t.description !== 'Saldo Iniziale') : initialEconomyData;
+    return saved ? JSON.parse(saved) : initialTransactions;
   });
 
   const [schoolItems, setSchoolItems] = useState(() => {
     const saved = localStorage.getItem('notion_school');
-    return saved ? JSON.parse(saved) : initialSchoolData;
+    return saved ? JSON.parse(saved) : initialSchoolItems;
   });
 
   const [grades, setGrades] = useState(() => {
@@ -118,7 +175,9 @@ export const WorkspaceProvider = ({ children }) => {
 
   const [topUps, setTopUps] = useState(() => {
     const saved = localStorage.getItem('notion_topUps');
-    return saved ? JSON.parse(saved) : initialTopUps;
+    const raw = saved ? JSON.parse(saved) : initialTopUps;
+    const { updated } = processRenewals(raw);
+    return updated;
   });
 
   const [homeStats, setHomeStats] = useState(() => {
@@ -143,40 +202,31 @@ export const WorkspaceProvider = ({ children }) => {
 
   const [economyCategories, setEconomyCategories] = useState(() => {
     const saved = localStorage.getItem('notion_economy_categories');
-    return saved ? JSON.parse(saved) : ['Stipendio', 'Alimentari', 'Trasporti', 'Intrattenimento', 'Abbonamenti', 'Salute & Cura', 'Shopping', 'Scuola', 'Altro'];
+    return saved ? JSON.parse(saved) : ['Scuola', 'Svago', 'Trasporti', 'Cibo', 'Altro'];
   });
 
   const [directLinks, setDirectLinks] = useState(() => {
     const saved = localStorage.getItem('notion_direct_links');
     return saved ? JSON.parse(saved) : [
-      { id: 'l1', name: 'Registro Elettronico (ClasseViva)', url: 'https://www.classeviva.spaggiari.eu' },
-      { id: 'l2', name: 'Google Classroom', url: 'https://classroom.google.com' }
+      { id: '1', title: 'Registro Elettronico', url: 'https://web.spaggiari.eu', icon: 'GraduationCap' },
+      { id: '2', title: 'Google Classroom', url: 'https://classroom.google.com', icon: 'BookOpen' },
+      { id: '3', title: 'Drive Condiviso Classe', url: 'https://drive.google.com', icon: 'Link2' }
     ];
   });
 
-  const defaultSubjects = [
-    "Chimica e biologia",
-    "Disegno e storia dell'arte",
-    "Filosofia",
-    "Fisica",
-    "Informatica",
-    "Inglese",
-    "Italiano",
-    "Matematica",
-    "Religione / Alternativa",
-    "Scienze motorie",
-    "Storia"
-  ];
-
   const [subjects, setSubjects] = useState(() => {
     const saved = localStorage.getItem('notion_subjects');
-    return saved ? JSON.parse(saved) : defaultSubjects;
+    return saved ? JSON.parse(saved) : [
+      'Matematica', 'Fisica', 'Italiano', 'Storia', 'Filosofia', 
+      'Inglese', 'Chimica e biologia', 'Informatica', 'Scienze motorie', 
+      'Disegno e storia dell\'arte', 'Religione / Alternativa'
+    ];
   });
 
   const [timetable, setTimetable] = useState(() => {
     const saved = localStorage.getItem('notion_timetable');
     return saved ? JSON.parse(saved) : {
-      lun_1: 'Matematica', lun_2: 'Fisica', lun_3: 'Italiano', lun_4: 'Inglese',
+      lun_1: 'Matematica', lun_2: 'Matematica', lun_3: 'Fisica', lun_4: 'Italiano',
       mar_1: 'Informatica', mar_2: 'Informatica', mar_3: 'Chimica e biologia', mar_4: 'Storia',
       mer_1: 'Matematica', mer_2: 'Filosofia', mer_3: 'Disegno e storia dell\'arte', mer_4: 'Scienze motorie',
       gio_1: 'Fisica', gio_2: 'Italiano', gio_3: 'Italiano', gio_4: 'Inglese',
@@ -224,7 +274,10 @@ export const WorkspaceProvider = ({ children }) => {
           if (Array.isArray(data.subjects)) setSubjects(data.subjects);
           if (Array.isArray(data.holidays)) setHolidays(data.holidays);
           if (Array.isArray(data.assets)) setAssets(data.assets);
-          if (Array.isArray(data.topUps)) setTopUps(data.topUps);
+          if (Array.isArray(data.topUps)) {
+            const { updated } = processRenewals(data.topUps);
+            setTopUps(updated);
+          }
           if (data.timetable && typeof data.timetable === 'object') setTimetable(data.timetable);
           if (typeof data.userName === 'string') setUserNameState(data.userName);
           if (typeof data.initialBaseBalance === 'number') setInitialBaseBalanceState(data.initialBaseBalance);
@@ -303,41 +356,20 @@ export const WorkspaceProvider = ({ children }) => {
     localStorage.setItem('notion_topUps', JSON.stringify(topUps));
   }, [topUps]);
 
-  // Check and process due monthly renewals on load
-  useEffect(() => {
-    const now = new Date();
-    const currentYear = now.getFullYear();
-    const currentMonth = now.getMonth() + 1;
-    const currentDay = now.getDate();
-    const currentCycle = `${currentYear}-${String(currentMonth).padStart(2, '0')}`;
-
+  // Check and process due monthly renewals automatically & periodically
+  const checkAndApplyRenewals = () => {
     setTopUps(prev => {
-      let hasChanged = false;
-      const updated = prev.map(item => {
-        const renewalDay = parseInt(item.renewalDay, 10) || 1;
-        if (currentDay >= renewalDay && item.lastDeductionMonth !== currentCycle) {
-          hasChanged = true;
-          const cost = parseFloat(item.monthlyCost) || 0;
-          const newBalance = Math.round(((parseFloat(item.currentBalance) || 0) - cost) * 100) / 100;
-          const renewalDateStr = `${currentYear}-${String(currentMonth).padStart(2, '0')}-${String(Math.min(currentDay, renewalDay)).padStart(2, '0')}`;
-          const historyEntry = {
-            id: 'ren_' + Date.now() + '_' + Math.random().toString(36).substring(2, 6),
-            date: renewalDateStr,
-            amount: -cost,
-            type: 'rinnovo',
-            note: `Rinnovo mensile automatico (-€${cost.toFixed(2)})`
-          };
-          return {
-            ...item,
-            currentBalance: newBalance,
-            lastDeductionMonth: currentCycle,
-            history: [historyEntry, ...(item.history || [])]
-          };
-        }
-        return item;
-      });
+      const { hasChanged, updated } = processRenewals(prev);
       return hasChanged ? updated : prev;
     });
+  };
+
+  useEffect(() => {
+    checkAndApplyRenewals();
+    const intervalTimer = setInterval(() => {
+      checkAndApplyRenewals();
+    }, 10000); // checks every 10 seconds
+    return () => clearInterval(intervalTimer);
   }, []);
 
   // Direct Save to Project Directory File (/project_data/workspace_data.json)
@@ -373,20 +405,20 @@ export const WorkspaceProvider = ({ children }) => {
       const res = await fetch('/api/save-workspace', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(projectData, null, 2)
+        body: JSON.stringify(projectData)
       });
       if (res.ok) {
         setSaveStatus('saved');
         setLastSaveTime(new Date().toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' }));
       } else {
-        setSaveStatus('saved');
+        setSaveStatus('error');
       }
-    } catch (err) {
-      setSaveStatus('saved');
+    } catch (e) {
+      setSaveStatus('error');
     }
   };
 
-  // Debounced auto-save to project file on data changes (prevents rapid POST loop)
+  // Debounced auto-save on any data change
   useEffect(() => {
     if (!isLoadedRef.current) return;
     const timer = setTimeout(() => {
@@ -397,41 +429,61 @@ export const WorkspaceProvider = ({ children }) => {
 
   // Global Handlers
   const updateTimetableCell = (dayKey, hourNum, subjectName) => {
-    const key = `${dayKey}_${hourNum}`;
-    setTimetable(prev => {
-      const copy = { ...prev };
-      if (!subjectName) {
-        delete copy[key];
-      } else {
-        copy[key] = subjectName;
-      }
-      return copy;
-    });
+    setTimetable(prev => ({
+      ...prev,
+      [`${dayKey}_${hourNum}`]: subjectName || ''
+    }));
   };
 
   const clearTimetable = () => {
     setTimetable({});
   };
-  const addSubject = (name) => {
-    const trimmed = name.trim();
-    if (trimmed && !subjects.includes(trimmed)) {
-      setSubjects(prev => [...prev, trimmed].sort());
+
+  const addSubject = (newSubj) => {
+    if (newSubj && !subjects.includes(newSubj)) {
+      setSubjects(prev => [...prev, newSubj]);
     }
   };
 
-  const deleteSubject = (name) => {
-    setSubjects(prev => prev.filter(s => s !== name));
+  const deleteSubject = (subjectToDelete) => {
+    setSubjects(prev => prev.filter(s => s !== subjectToDelete));
+    // Cascade delete grades associated with this subject
+    setGrades(prev => prev.filter(g => g.subject !== subjectToDelete));
+    // Cascade delete school items associated with this subject
+    setSchoolItems(prev => prev.filter(item => item.subject !== subjectToDelete));
+    // Clean up timetable cells that had this subject
+    setTimetable(prev => {
+      const updated = { ...prev };
+      Object.keys(updated).forEach(k => {
+        if (updated[k] === subjectToDelete) {
+          delete updated[k];
+        }
+      });
+      return updated;
+    });
   };
 
   const updateSubject = (oldName, newName) => {
-    const trimmed = newName.trim();
-    if (!trimmed) return;
-    setSubjects(prev => prev.map(s => s === oldName ? trimmed : s));
-    setGrades(prev => prev.map(g => g.subject === oldName ? { ...g, subject: trimmed } : g));
-    setSchoolItems(prev => prev.map(i => i.subject === oldName ? { ...i, subject: trimmed } : i));
+    if (!newName || oldName === newName) return;
+    setSubjects(prev => prev.map(s => s === oldName ? newName : s));
+    // Cascade update in grades
+    setGrades(prev => prev.map(g => g.subject === oldName ? { ...g, subject: newName } : g));
+    // Cascade update in school items
+    setSchoolItems(prev => prev.map(item => item.subject === oldName ? { ...item, subject: newName } : item));
+    // Cascade update in timetable
+    setTimetable(prev => {
+      const updated = { ...prev };
+      Object.keys(updated).forEach(k => {
+        if (updated[k] === oldName) {
+          updated[k] = newName;
+        }
+      });
+      return updated;
+    });
   };
-  const addTransaction = (newTx) => {
-    setTransactions(prev => [{ ...newTx, id: Date.now().toString() }, ...prev]);
+
+  const addTransaction = (tx) => {
+    setTransactions(prev => [{ ...tx, id: Date.now().toString() }, ...prev]);
   };
 
   const deleteTransaction = (id) => {
@@ -514,40 +566,92 @@ export const WorkspaceProvider = ({ children }) => {
     const now = new Date();
     const currentYear = now.getFullYear();
     const currentMonth = now.getMonth() + 1;
+    const currentDay = now.getDate();
     const currentCycle = `${currentYear}-${String(currentMonth).padStart(2, '0')}`;
     const renewalDay = parseInt(newTopUp.renewalDay, 10) || 1;
-    const isPastRenewal = now.getDate() >= renewalDay;
     const lastMonthDate = new Date(currentYear, currentMonth - 2, 1);
     const prevCycle = `${lastMonthDate.getFullYear()}-${String(lastMonthDate.getMonth() + 1).padStart(2, '0')}`;
+
+    const rawBal = parseFloat(newTopUp.currentBalance) || 0;
+    const cost = parseFloat(newTopUp.monthlyCost) || 0;
+
+    // Check if renewal day is due today or in the past this month
+    const isDueNow = currentDay >= renewalDay;
+    const finalBalance = isDueNow ? Math.round((rawBal - cost) * 100) / 100 : rawBal;
+    const finalDeductionMonth = isDueNow ? currentCycle : prevCycle;
+
+    const initialHistory = [
+      {
+        id: 'init_' + Date.now(),
+        date: now.toISOString().split('T')[0],
+        amount: rawBal,
+        type: 'saldo_iniziale',
+        note: 'Impostazione saldo iniziale'
+      }
+    ];
+
+    if (isDueNow) {
+      const renewalDateStr = `${currentYear}-${String(currentMonth).padStart(2, '0')}-${String(Math.min(currentDay, renewalDay)).padStart(2, '0')}`;
+      initialHistory.unshift({
+        id: 'ren_' + Date.now() + '_' + Math.random().toString(36).substring(2, 6),
+        date: renewalDateStr,
+        amount: -cost,
+        type: 'rinnovo',
+        note: `Rinnovo mensile automatico (-€${cost.toFixed(2)})`
+      });
+    }
 
     const item = {
       id: Date.now().toString(),
       name: newTopUp.name.trim(),
-      currentBalance: parseFloat(newTopUp.currentBalance) || 0,
-      monthlyCost: parseFloat(newTopUp.monthlyCost) || 0,
+      currentBalance: finalBalance,
+      monthlyCost: cost,
       renewalDay: renewalDay,
-      lastDeductionMonth: isPastRenewal ? currentCycle : prevCycle,
-      history: [
-        {
-          id: 'init_' + Date.now(),
-          date: now.toISOString().split('T')[0],
-          amount: parseFloat(newTopUp.currentBalance) || 0,
-          type: 'saldo_iniziale',
-          note: 'Impostazione saldo iniziale'
-        }
-      ]
+      lastDeductionMonth: finalDeductionMonth,
+      history: initialHistory
     };
     setTopUps(prev => [item, ...prev]);
   };
 
+  const applyRenewalNow = (id) => {
+    const now = new Date();
+    const currentYear = now.getFullYear();
+    const currentMonth = now.getMonth() + 1;
+    const currentCycle = `${currentYear}-${String(currentMonth).padStart(2, '0')}`;
+    const currentDateStr = now.toISOString().split('T')[0];
+
+    setTopUps(prev => prev.map(item => {
+      if (item.id !== id) return item;
+      const cost = parseFloat(item.monthlyCost) || 0;
+      const newBalance = Math.round(((parseFloat(item.currentBalance) || 0) - cost) * 100) / 100;
+      const historyEntry = {
+        id: 'ren_' + Date.now() + '_' + Math.random().toString(36).substring(2, 6),
+        date: currentDateStr,
+        amount: -cost,
+        type: 'rinnovo',
+        note: `Rinnovo canone manuale (-€${cost.toFixed(2)})`
+      };
+      return {
+        ...item,
+        currentBalance: newBalance,
+        lastDeductionMonth: currentCycle,
+        history: [historyEntry, ...(item.history || [])]
+      };
+    }));
+  };
+
   const updateTopUp = (id, updatedFields) => {
-    setTopUps(prev => prev.map(t => t.id === id ? {
-      ...t,
-      ...updatedFields,
-      currentBalance: updatedFields.currentBalance !== undefined ? (parseFloat(updatedFields.currentBalance) || 0) : t.currentBalance,
-      monthlyCost: updatedFields.monthlyCost !== undefined ? (parseFloat(updatedFields.monthlyCost) || 0) : t.monthlyCost,
-      renewalDay: updatedFields.renewalDay !== undefined ? (parseInt(updatedFields.renewalDay, 10) || 1) : t.renewalDay
-    } : t));
+    setTopUps(prev => {
+      const updatedList = prev.map(t => t.id === id ? {
+        ...t,
+        ...updatedFields,
+        currentBalance: updatedFields.currentBalance !== undefined ? (parseFloat(updatedFields.currentBalance) || 0) : t.currentBalance,
+        monthlyCost: updatedFields.monthlyCost !== undefined ? (parseFloat(updatedFields.monthlyCost) || 0) : t.monthlyCost,
+        renewalDay: updatedFields.renewalDay !== undefined ? (parseInt(updatedFields.renewalDay, 10) || 1) : t.renewalDay
+      } : t);
+      const { updated } = processRenewals(updatedList);
+      return updated;
+    });
   };
 
   const deleteTopUp = (id) => {
@@ -691,7 +795,10 @@ export const WorkspaceProvider = ({ children }) => {
       if (Array.isArray(data.directLinks)) setDirectLinks(data.directLinks);
       if (Array.isArray(data.holidays)) setHolidays(data.holidays);
       if (Array.isArray(data.assets)) setAssets(data.assets);
-      if (Array.isArray(data.topUps)) setTopUps(data.topUps);
+      if (Array.isArray(data.topUps)) {
+        const { updated } = processRenewals(data.topUps);
+        setTopUps(updated);
+      }
       if (data.timetable && typeof data.timetable === 'object') setTimetable(data.timetable);
       if (typeof data.userName === 'string') {
         setUserNameState(data.userName);
@@ -758,6 +865,8 @@ export const WorkspaceProvider = ({ children }) => {
       updateTopUp,
       deleteTopUp,
       rechargeTopUp,
+      applyRenewalNow,
+      checkAndApplyRenewals,
       homeStats,
       setHomeStats,
       customPages,
